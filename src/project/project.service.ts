@@ -6,6 +6,8 @@ import * as path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 import Project from './entities/project';
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
+import UpdateOptions from './entities/project-update-options';
+import ProjectUpdate, { ProjectUpdateOperation } from './entities/project-update';
 
 @Injectable()
 export class ProjectService {
@@ -55,23 +57,114 @@ export class ProjectService {
 				}
 			}
 		}
+		projects.sort((a, b) =>{ return new Date(b.editedTime || 0).getTime() - new Date(a.editedTime || 0).getTime()});
 		return projects;
 	}
 
 	async findOne(id: string) {
 		try{
-			const fullPath = path.join(this.rootPath, id, 'project.json');
-			const configFile = await fs.promises.readFile(fullPath, {encoding: 'utf-8'});
-			const config = JSON.parse(configFile);
-			return config;
+			const configData: any = await this.cacheManager.get(id);
+			if(configData == undefined){
+				if(!id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i)){
+					throw `Invalid UUID`;
+				}
+				const fullPath = path.join(this.rootPath, id, 'project.json');
+				const configFile = await fs.promises.readFile(fullPath, {encoding: 'utf-8'});
+				const config = JSON.parse(configFile);
+				await this.cacheManager.set(id, configFile);
+				return config;
+			}else{
+				const config = JSON.parse(configData);
+				return config;
+			}
+
 		}catch(error){
-			this.logger.warn(`Unable to find project by id ${error}`);
+			this.logger.warn(`Unable to find project by id. ${error}`);
 			return null;
 		}
 	}
 
-	update(id: string, updatedProject: Project) {
-		return `This action updates a #${id} project`;
+	async updateProject(project: Project, operationName: ProjectUpdateOperation, updatePath: string, content: any, options: UpdateOptions = {}){
+		const update = await this.updateValues(project, operationName, updatePath, content, {});
+		//Saving changes
+		if(project.updates){
+			project.updates.push(update);
+		}else{
+			project.updates = [update];
+		}
+		project.editedTime = new Date();
+		const configFile = JSON.stringify(project);
+		await this.cacheManager.set(project.id, configFile);
+		const filePath = path.join(this.rootPath, project.id, 'project.json');
+		await fs.promises.writeFile(filePath, configFile);
+		return project;
+	}
+
+	async updateValues(project: Project, operationName: ProjectUpdateOperation, updatePath: string, content: any, options: UpdateOptions = {}) {
+		//Getting correct object path
+		const pathSplit = updatePath.split('/');
+		let currentObject = project;
+		let lastParent = project;
+		try{
+			for (const pathPart of pathSplit) {
+				if(pathPart == ''){
+					continue;
+				}
+				if(pathPart.includes(':')){
+					const [key, value] = pathPart.split(':');
+					if(Array.isArray(currentObject)){
+						const element = currentObject.find((obj)=> {obj[key] == value});
+						if(element){
+							lastParent = currentObject;
+							currentObject = element;
+						}else{
+							throw 'Unable to find array item';
+						}
+					}else{
+						throw 'Unable to find array item in object';
+					}
+				}else if (typeof currentObject == 'object') {
+					const child = currentObject[pathPart];
+					if (child) {
+						lastParent = currentObject;
+						currentObject = child;
+					} else {
+						throw 'Unable to find given path';
+					}
+				} else {
+					throw 'Trying to go into existing object';
+				}
+			}
+		}catch(err){
+			this.logger.error(`Error in update path traversing:\n ${err}`);
+		}
+		const lastPath = pathSplit[pathSplit.length - 1];
+		//Creating update
+		const update = new ProjectUpdate();
+		update.path = updatePath;
+		update.options = options;
+		update.operationName = operationName;
+		//Changing variable
+		switch(operationName){
+			case 'change':
+				if(typeof content === 'object'){
+					update.before = currentObject;
+					Object.assign(currentObject, content)
+					update.after = currentObject;
+				}else{
+					update.before = lastParent[lastPath];
+					lastParent[lastPath] = content;
+					update.after = lastParent[lastPath];
+				}
+				break;
+			case 'appendArray':
+				break;
+			case 'changeArrayItem':
+				break;
+			case 'removeArrayItem':
+				break;
+		}
+		return update;
 	}
 
 	remove(id: number) {
