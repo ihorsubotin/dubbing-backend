@@ -1,4 +1,1 @@
-export default class ProjectUpdateOptions{
-
-}
-
+export default class ProjectUpdateOptions {}

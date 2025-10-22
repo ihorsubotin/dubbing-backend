@@ -23,9 +23,7 @@ import { SelectProjectDto } from './dto/select-project.dto';
 
 @Controller('project')
 export class ProjectController {
-	constructor(
-		private readonly projectService: ProjectService,
-	) {}
+	constructor(private readonly projectService: ProjectService) {}
 
 	@Post()
 	create(@Body() createProjectDto: CreateProjectDto) {
@@ -39,17 +37,20 @@ export class ProjectController {
 
 	@UseGuards(ActiveCurrentProject)
 	@Get()
-	async getCurrentProject(@GetProject() project: Project){
+	getCurrentProject(@GetProject() project: Project) {
 		return project;
 	}
 
 	@Post('select')
-	async setCurrentProject(@Body() body: SelectProjectDto, @Res({ passthrough: true }) res: Response){
+	async setCurrentProject(
+		@Body() body: SelectProjectDto,
+		@Res({ passthrough: true }) res: Response,
+	) {
 		const project = await this.projectService.findOne(body.id);
-		if(project){
+		if (project) {
 			res.cookie('project-id', project.id);
-			return;
-		}else{
+			return project;
+		} else {
 			throw new NotFoundException(`Project ${body.id} not found`);
 		}
 	}
@@ -58,24 +59,41 @@ export class ProjectController {
 	async testProjectOpeningSpeed() {
 		const projects = await this.projectService.findAll();
 		const startTime = new Date();
-		for(let i = 0; i < 2000; i++){
-			for(const project of projects){
+		for (let i = 0; i < 2000; i++) {
+			for (const project of projects) {
 				await this.projectService.findOne(project.id as string);
 			}
 		}
 		const endTime = new Date();
 		const differnece = endTime.getTime() - startTime.getTime();
-		return differnece; 
+		return differnece;
 		//return this.projectService.findOne(id);
 	}
 
-	@Patch(':id')
-	update(@Param('id') id: string, @Body() updateProjectDto: UpdateProjectDto) {
-		//return this.projectService.update(+id, updateProjectDto);
+	@UseGuards(ActiveCurrentProject)
+	@Patch()
+	update(
+		@GetProject() project: Project,
+		@Body() updateProjectDto: UpdateProjectDto,
+	) {
+		return this.projectService.updateProjectRoot(project, updateProjectDto);
 	}
 
-	@Delete(':id')
-	remove(@Param('id') id: string) {
-		return this.projectService.remove(+id);
+	@UseGuards(ActiveCurrentProject)
+	@Post('undo')
+	undo(@GetProject() project: Project) {
+		return this.projectService.applyUndo(project);
+	}
+
+	@UseGuards(ActiveCurrentProject)
+	@Post('redo')
+	redo(@GetProject() project: Project) {
+		return this.projectService.applyRedo(project);
+	}
+
+	@UseGuards(ActiveCurrentProject)
+	@Delete()
+	remove(@GetProject() project: Project) {
+		return this.projectService.remove(project);
 	}
 }

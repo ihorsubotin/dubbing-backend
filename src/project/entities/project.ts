@@ -1,10 +1,11 @@
-import ProjectUpdate from "./project-update";
+import ProjectUpdate from './project-update';
 
-export default class Project{
+export default class Project {
 	id: string;
 	name: string;
 	description: string;
 	creationTime: Date;
 	editedTime: Date;
-	updates: ProjectUpdate[] = [];
+	undoUpdates: ProjectUpdate[] = [];
+	redoUpdates: ProjectUpdate[] = [];
 }
