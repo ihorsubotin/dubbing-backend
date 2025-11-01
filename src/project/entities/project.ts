@@ -1,3 +1,4 @@
+import AudioFile from 'src/audiofiles/entities/audiofile.entity';
 import ProjectUpdate from './project-update';
 
 export default class Project {
@@ -8,4 +9,5 @@ export default class Project {
 	editedTime: Date;
 	undoUpdates: ProjectUpdate[] = [];
 	redoUpdates: ProjectUpdate[] = [];
+	audio: AudioFile[];
 }

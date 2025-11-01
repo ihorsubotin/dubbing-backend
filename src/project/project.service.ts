@@ -1,21 +1,19 @@
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreateProjectDto } from './dto/create-project.dto';
-import { UpdateProjectDto } from './dto/update-project.dto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 import Project from './entities/project';
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
-import UpdateOptions from './entities/project-update-options';
 import ProjectUpdate, {
 	ProjectUpdateOperation,
+	ProjectUpdateOptions,
 } from './entities/project-update';
-import { diff } from 'node:util';
 
 @Injectable()
 export class ProjectService {
 	private readonly logger = new Logger(ProjectService.name);
-	private readonly rootPath = process.env.PROJECTS_DIR || './projects';
+	public readonly rootPath = process.env.PROJECTS_DIR || './projects';
 
 	constructor(
 		@Inject(CACHE_MANAGER)
@@ -142,7 +140,7 @@ export class ProjectService {
 		operationName: ProjectUpdateOperation,
 		updatePath: string,
 		content: any,
-		options: UpdateOptions = {},
+		options: ProjectUpdateOptions = {},
 	) {
 		let update = new ProjectUpdate();
 		update.operationName = operationName;
@@ -167,6 +165,7 @@ export class ProjectService {
 		const pathSplit = update.path.split('/');
 		let currentObject = project;
 		let lastParent = project;
+		let lastPath: string = '';
 		try {
 			for (const pathPart of pathSplit) {
 				if (pathPart == '') {
@@ -175,9 +174,11 @@ export class ProjectService {
 				if (pathPart.includes(':')) {
 					const [key, value] = pathPart.split(':');
 					if (Array.isArray(currentObject)) {
-						const element = currentObject.find((obj) => {
+						const elementIndex = currentObject.findIndex((obj) => {
 							return obj[key] == value;
 						});
+						lastPath = elementIndex.toString();
+						const element = currentObject[elementIndex];
 						if (element) {
 							lastParent = currentObject;
 							currentObject = element;
@@ -188,8 +189,9 @@ export class ProjectService {
 						throw 'Unable to find array item in object';
 					}
 				} else if (typeof currentObject == 'object') {
+					lastPath = pathPart;
 					const child = currentObject[pathPart];
-					if (child) {
+					if (child || lastParent) {
 						lastParent = currentObject;
 						currentObject = child;
 					} else {
@@ -202,7 +204,7 @@ export class ProjectService {
 		} catch (err) {
 			this.logger.error(`Error in update path traversing:\n ${err}`);
 		}
-		const lastPath = pathSplit[pathSplit.length - 1];
+
 		//Changing variable
 		switch (update.operationName) {
 			case 'change':
@@ -215,10 +217,40 @@ export class ProjectService {
 				}
 				break;
 			case 'appendArray':
-				break;
-			case 'changeArrayItem':
+				if (currentObject === undefined || currentObject === null) {
+					lastParent[lastPath] = [];
+					currentObject = lastParent[lastPath];
+				}
+				if (Array.isArray(currentObject)) {
+					update.before = undefined;
+					currentObject.push(update.after);
+				} else {
+					this.logger.error('Unable to change to append non array');
+				}
 				break;
 			case 'removeArrayItem':
+				if (Array.isArray(currentObject)) {
+					const itemIndex = currentObject.findIndex((value) => {
+						if (typeof update.before === 'object') {
+							for (const field in value) {
+								if (value[field] !== update.before[field]) {
+									return false;
+								}
+							}
+							return true;
+						} else {
+							return update.before === value;
+						}
+					});
+					if (itemIndex !== -1) {
+						update.before = currentObject.splice(itemIndex, 1)[0];
+						update.after = undefined;
+					} else {
+						this.logger.error('Unable to remove items from non array');
+					}
+				} else {
+					this.logger.error('Unable to remove items from non array');
+				}
 				break;
 		}
 		return update;

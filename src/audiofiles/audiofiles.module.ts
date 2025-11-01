@@ -1,9 +1,12 @@
 import { Module } from '@nestjs/common';
-import { AudiofilesService } from './audiofiles.service';
+import { AudioFilesService } from './audiofiles.service';
 import { AudiofilesController } from './audiofiles.controller';
+import { ProjectModule } from 'src/project/project.module';
+import { ProjectService } from 'src/project/project.service';
 
 @Module({
+	imports: [ProjectModule],
 	controllers: [AudiofilesController],
-	providers: [AudiofilesService],
+	providers: [AudioFilesService],
 })
 export class AudiofilesModule {}

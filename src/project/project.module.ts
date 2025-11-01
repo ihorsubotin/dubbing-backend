@@ -8,5 +8,6 @@ import { ActiveCurrentProject } from './guard/current-project';
 	imports: [CacheModule.register()],
 	controllers: [ProjectController],
 	providers: [ProjectService, ActiveCurrentProject],
+	exports: [ProjectService],
 })
 export class ProjectModule {}

@@ -1,5 +1,3 @@
-import ProjectUpdateOptions from './project-update-options';
-
 export type ProjectUpdateOperation =
 	| 'change'
 	| 'appendArray'
@@ -15,19 +13,21 @@ export default class ProjectUpdate {
 
 	static reverseUpdate(update: ProjectUpdate) {
 		const newUpdate = Object.assign({}, update);
+		const temp = newUpdate.before;
+		newUpdate.before = newUpdate.after;
+		newUpdate.after = temp;
 		switch (newUpdate.operationName) {
 			case 'change':
-				const temp = newUpdate.before;
-				newUpdate.before = newUpdate.after;
-				newUpdate.after = temp;
 				break;
 			case 'appendArray':
-				break;
-			case 'changeArrayItem':
+				newUpdate.operationName = 'removeArrayItem';
 				break;
 			case 'removeArrayItem':
+				newUpdate.operationName = 'appendArray';
 				break;
 		}
 		return newUpdate;
 	}
 }
+
+export class ProjectUpdateOptions {}
