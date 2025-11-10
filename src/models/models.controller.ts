@@ -6,32 +6,48 @@ import {
 	Patch,
 	Param,
 	Delete,
+	UseGuards,
+	NotFoundException,
 } from '@nestjs/common';
 import { ModelsService } from './models.service';
-import { CreateModelDto } from './dto/create-model.dto';
 import { UpdateModelDto } from './dto/update-model.dto';
+import { ActiveCurrentProject } from 'src/projects/guard/current-project';
+import Project from 'src/projects/entities/project';
+import { GetProject } from 'src/projects/decorator/get-project';
 
 @Controller('models')
 export class ModelsController {
 	constructor(private readonly modelsService: ModelsService) {}
 
-	@Post()
-	create(@Body() createModelDto: CreateModelDto) {
-		return this.modelsService.create(createModelDto);
-	}
-
-	@Get('all')
-	findAll() {
-		return this.modelsService.findAll();
+	@Get()
+	@UseGuards(ActiveCurrentProject)
+	findAll(@GetProject() project: Project) {
+		return project.models;
 	}
 
 	@Get(':name')
-	findOne(@Param('name') id: string) {
-		return this.modelsService.findOne(+id);
+	@UseGuards(ActiveCurrentProject)
+	findOne(@GetProject() project: Project,
+	@Param('name') name: string) {
+		if(project.models[name]){
+			return project.models[name];
+		}else{
+			throw new NotFoundException(`Model ${name} not found`);
+		}
 	}
 
 	@Patch(':name')
-	update(@Param('name') id: string, @Body() updateModelDto: UpdateModelDto) {
-		return this.modelsService.update(+id, updateModelDto);
+	@UseGuards(ActiveCurrentProject)
+	async update(
+		@GetProject() project: Project, 
+		@Param('name') name: string, 
+		@Body() updateModelDto: UpdateModelDto
+	) {
+		const update = await this.modelsService.update(project, name, updateModelDto);
+		if(update){
+			return update;
+		}else{
+			throw new NotFoundException(`Unable to update model with given parameters`);
+		}
 	}
 }

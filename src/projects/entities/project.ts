@@ -10,4 +10,5 @@ export default class Project {
 	undoUpdates: ProjectUpdate[] = [];
 	redoUpdates: ProjectUpdate[] = [];
 	audio: AudioFile[];
+	models: any;
 }

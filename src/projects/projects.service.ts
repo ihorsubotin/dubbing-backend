@@ -10,9 +10,25 @@ import ProjectUpdate, {
 	ProjectUpdateOptions,
 } from './entities/project-update';
 
-const DEFAULT_PROJECT = {
+export const DEFAULT_PROJECT = {
 	audio: [],
-	models: {}
+	models: {
+		diarisation: {
+			model: 'pyannote3.1'
+		},
+		recognition: {
+			model: 'whisper'
+		},
+		separation: {
+			model: 'demucs'
+		},
+		translation: {
+			model: 'deepl'
+		},
+		voiceConversion: {
+			model: 'chatterbox'
+		}
+	}
 }
 
 @Injectable()
@@ -35,6 +51,7 @@ export class ProjectsService {
 		project.editedTime = new Date();
 		project.name = createProjectDto.name;
 		project.description = createProjectDto.description;
+		this.checkMigration(project);
 		await this.saveProjectOnDisk(project);
 		return project;
 	}
@@ -92,6 +109,21 @@ export class ProjectsService {
 			if(audio.type === undefined){
 				audio.type = 'raw';
 				changed = true;
+			}
+		}
+		for(const modelName in DEFAULT_PROJECT.models){
+			const model = project.models[modelName];
+			const modelRef = DEFAULT_PROJECT.models[modelName];
+			if(model === undefined){
+				project.models[modelName] = modelRef;
+				changed = true;
+			}else{
+				for(const param in modelRef){
+					if(model[param] === undefined){
+						model[param] = modelRef[param];
+						changed = true;
+					}
+				}
 			}
 		}
 		return changed;
