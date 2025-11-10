@@ -1,10 +1,16 @@
 import { Module } from '@nestjs/common';
-import { ProjectModule } from './project/project.module';
+import { ProjectsModule } from './projects/projects.module';
 import { ConfigModule } from '@nestjs/config';
 import { AudiofilesModule } from './audiofiles/audiofiles.module';
+import { ModelsModule } from './models/models.module';
 
 @Module({
-	imports: [ConfigModule.forRoot(), ProjectModule, AudiofilesModule],
+	imports: [
+		ConfigModule.forRoot(),
+		ProjectsModule,
+		AudiofilesModule,
+		ModelsModule,
+	],
 	controllers: [],
 	providers: [],
 })

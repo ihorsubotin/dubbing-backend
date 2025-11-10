@@ -3,7 +3,7 @@ import {
 	ExecutionContext,
 	NotFoundException,
 } from '@nestjs/common';
-import { ProjectService } from '../project.service';
+import { ProjectsService } from '../projects.service';
 import Project from '../entities/project';
 
 export const GetProject = createParamDecorator(

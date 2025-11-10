@@ -10,29 +10,29 @@ import {
 	NotFoundException,
 	Res,
 } from '@nestjs/common';
-import { ProjectService } from './project.service';
+import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { diff } from 'node:util';
 import { ActiveCurrentProject } from './guard/current-project';
-import { GetProject } from './decorator/current-project';
+import { GetProject } from './decorator/get-project';
 import Project from './entities/project';
 import type { Response } from 'express';
 import { SelectProjectDto } from './dto/select-project.dto';
 
 @Controller('project')
-export class ProjectController {
-	constructor(private readonly projectService: ProjectService) {}
+export class ProjectsController {
+	constructor(private readonly projectsService: ProjectsService) {}
 
 	@Post()
 	create(@Body() createProjectDto: CreateProjectDto) {
-		return this.projectService.create(createProjectDto);
+		return this.projectsService.create(createProjectDto);
 	}
 
 	@Get('all')
 	findAll() {
-		return this.projectService.findAll();
+		return this.projectsService.findAll();
 	}
 
 	@UseGuards(ActiveCurrentProject)
@@ -46,7 +46,7 @@ export class ProjectController {
 		@Body() body: SelectProjectDto,
 		@Res({ passthrough: true }) res: Response,
 	) {
-		const project = await this.projectService.findOne(body.id);
+		const project = await this.projectsService.findOne(body.id);
 		if (project) {
 			res.cookie('project-id', project.id);
 			return project;
@@ -57,17 +57,16 @@ export class ProjectController {
 
 	@Get('test')
 	async testProjectOpeningSpeed() {
-		const projects = await this.projectService.findAll();
+		const projects = await this.projectsService.findAll();
 		const startTime = new Date();
 		for (let i = 0; i < 2000; i++) {
 			for (const project of projects) {
-				await this.projectService.findOne(project.id as string);
+				await this.projectsService.findOne(project.id as string);
 			}
 		}
 		const endTime = new Date();
 		const differnece = endTime.getTime() - startTime.getTime();
 		return differnece;
-		//return this.projectService.findOne(id);
 	}
 
 	@UseGuards(ActiveCurrentProject)
@@ -76,24 +75,24 @@ export class ProjectController {
 		@GetProject() project: Project,
 		@Body() updateProjectDto: UpdateProjectDto,
 	) {
-		return this.projectService.updateProjectRoot(project, updateProjectDto);
+		return this.projectsService.updateProjectRoot(project, updateProjectDto);
 	}
 
 	@UseGuards(ActiveCurrentProject)
 	@Post('undo')
 	undo(@GetProject() project: Project) {
-		return this.projectService.applyUndo(project);
+		return this.projectsService.applyUndo(project);
 	}
 
 	@UseGuards(ActiveCurrentProject)
 	@Post('redo')
 	redo(@GetProject() project: Project) {
-		return this.projectService.applyRedo(project);
+		return this.projectsService.applyRedo(project);
 	}
 
 	@UseGuards(ActiveCurrentProject)
 	@Delete()
 	remove(@GetProject() project: Project) {
-		return this.projectService.remove(project);
+		return this.projectsService.remove(project);
 	}
 }

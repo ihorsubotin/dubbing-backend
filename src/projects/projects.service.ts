@@ -10,9 +10,14 @@ import ProjectUpdate, {
 	ProjectUpdateOptions,
 } from './entities/project-update';
 
+const DEFAULT_PROJECT = {
+	audio: [],
+	models: {}
+}
+
 @Injectable()
-export class ProjectService {
-	private readonly logger = new Logger(ProjectService.name);
+export class ProjectsService {
+	private readonly logger = new Logger(ProjectsService.name);
 	public readonly rootPath = process.env.PROJECTS_DIR || './projects';
 
 	constructor(
@@ -75,24 +80,52 @@ export class ProjectService {
 		return projects;
 	}
 
+	checkMigration(project: Project){
+		let changed = false;
+		for(const variable in DEFAULT_PROJECT){
+			if(project[variable] === undefined){
+				changed = true;
+				project[variable] = DEFAULT_PROJECT[variable];
+			}
+		}
+		for(const audio of project.audio){
+			if(audio.type === undefined){
+				audio.type = 'raw';
+				changed = true;
+			}
+		}
+		return changed;
+	}
+
+	async readFromDisk(id: string){
+		if (
+			!id.match(
+				/^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+			)
+		) {
+			throw `Invalid UUID`;
+		}
+		const fullPath = path.join(this.rootPath, id, 'project.json');
+		const configFile = await fs.promises.readFile(fullPath, {
+			encoding: 'utf-8',
+		});
+		const config = JSON.parse(configFile);
+		const changed = this.checkMigration(config);
+		if(changed){
+			const newFile = JSON.stringify(config);
+			await fs.promises.writeFile(fullPath, newFile, {encoding: 'utf-8'});
+			await this.cacheManager.set(id, newFile);
+		}else{
+			await this.cacheManager.set(id, configFile);
+		}
+		return config;
+	}
+
 	async findOne(id: string): Promise<Project | null> {
 		try {
 			const configData: any = await this.cacheManager.get(id);
 			if (configData == undefined) {
-				if (
-					!id.match(
-						/^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
-					)
-				) {
-					throw `Invalid UUID`;
-				}
-				const fullPath = path.join(this.rootPath, id, 'project.json');
-				const configFile = await fs.promises.readFile(fullPath, {
-					encoding: 'utf-8',
-				});
-				const config = JSON.parse(configFile);
-				await this.cacheManager.set(id, configFile);
-				return config;
+				return await this.readFromDisk(id);
 			} else {
 				const config = JSON.parse(configData);
 				return config;

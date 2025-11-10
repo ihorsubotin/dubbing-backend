@@ -1,21 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { CreateAudiofileDto } from './dto/create-audiofile.dto';
 import { UpdateAudiofileDto } from './dto/update-audiofile.dto';
-import { ProjectService } from 'src/project/project.service';
+import { ProjectsService } from 'src/projects/projects.service';
 import AudioFile from './entities/audiofile.entity';
-import Project from 'src/project/entities/project';
+import Project from 'src/projects/entities/project';
 import path from 'node:path';
 import * as fs from 'node:fs';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class AudioFilesService {
-	constructor(private projectService: ProjectService) {}
+	constructor(private projectsService: ProjectsService) {}
 
 	async uploadFile(project: Project, file: Express.Multer.File) {
 		const audioFile = new AudioFile();
 		const audioDir = path.join(
-			this.projectService.rootPath,
+			this.projectsService.rootPath,
 			project.id,
 			'audio',
 		);
@@ -30,7 +30,8 @@ export class AudioFilesService {
 		audioFile.name = path.parse(file.originalname).name;
 		audioFile.uploadTime = new Date();
 		audioFile.size = file.size;
-		await this.projectService.updateProject(
+		audioFile.type = 'raw';
+		await this.projectsService.updateProject(
 			project,
 			'appendArray',
 			'audio',
@@ -48,23 +49,37 @@ export class AudioFilesService {
 		}
 	}
 
-	create(createAudiofileDto: CreateAudiofileDto) {
-		return 'This action adds a new audiofile';
+	findAllRaw(project: Project, name: string) {
+		if(name == undefined){
+			name = '';
+		}
+		const audios = project.audio.filter(audio=> audio.type === 'raw' && audio.name.includes(name));
+		return audios;
 	}
 
-	findAll() {
-		return `This action returns all audiofiles`;
+	findOne(project: Project, fileName: string) {
+		const audio = project.audio.find((value) => value.fileName == fileName);
+		if (audio) {
+			return audio;
+		} else {
+			return null;
+		}
 	}
 
-	findOne(id: number) {
-		return `This action returns a #${id} audiofile`;
-	}
-
-	update(id: number, updateAudiofileDto: UpdateAudiofileDto) {
-		return `This action updates a #${id} audiofile`;
+	async update(project: Project, fileName: string, updateAudiofileDto: UpdateAudiofileDto) {
+		const audio = project.audio.find((value) => value.fileName == fileName);
+		if(audio){
+			await this.projectsService.updateProject(project, 'change', `audio/fileName:${fileName}`, {
+				name: updateAudiofileDto.name
+			});
+			return audio;
+		}else{
+			return null;
+		}
 	}
 
 	remove(id: number) {
+		//TODO		
 		return `This action removes a #${id} audiofile`;
 	}
 }

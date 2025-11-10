@@ -13,14 +13,16 @@ import {
 	Res,
 	NotFoundException,
 	StreamableFile,
+	HostParam,
+	Query,
 } from '@nestjs/common';
 import { AudioFilesService } from './audiofiles.service';
 import { CreateAudiofileDto } from './dto/create-audiofile.dto';
 import { UpdateAudiofileDto } from './dto/update-audiofile.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ActiveCurrentProject } from 'src/project/guard/current-project';
-import { GetProject } from 'src/project/decorator/current-project';
-import Project from 'src/project/entities/project';
+import { ActiveCurrentProject } from 'src/projects/guard/current-project';
+import { GetProject } from 'src/projects/decorator/get-project';
+import Project from 'src/projects/entities/project';
 import type { Response } from 'express';
 
 @Controller('audio')
@@ -38,35 +40,47 @@ export class AudiofilesController {
 	}
 
 	@Get()
-	findAll() {
-		return this.audiofilesService.findAll();
+	@UseGuards(ActiveCurrentProject)
+	findAllRaw(
+		@GetProject() project: Project,
+		@Query('name') name: string
+	) {
+		return this.audiofilesService.findAllRaw(project, name);
 	}
 
 	@Get(':id')
 	@UseGuards(ActiveCurrentProject)
 	findOne(
 		@GetProject() project: Project,
-		@Param('id') filename: string,
+		@Param('id') fileName: string,
 		@Res() res: Response,
 	) {
-		const stream = this.audiofilesService.getAudioStream(project, filename);
+		const stream = this.audiofilesService.getAudioStream(project, fileName);
 		if (stream) {
 			stream.pipe(res);
-			//return new StreamableFile(stream);
+			return new StreamableFile(stream);
 		} else {
 			throw new NotFoundException();
 		}
 	}
 
 	@Patch(':id')
-	update(
-		@Param('id') id: string,
+	@UseGuards(ActiveCurrentProject)
+	async update(
+		@GetProject() project: Project,
+		@Param('id') fileName: string,
 		@Body() updateAudiofileDto: UpdateAudiofileDto,
 	) {
-		return this.audiofilesService.update(+id, updateAudiofileDto);
+		const update = await this.audiofilesService.update(project, fileName, updateAudiofileDto);
+		if(update){
+			return update;
+		}else{
+			throw new NotFoundException(`File with name ${fileName} not found`);
+		}
 	}
 
 	@Delete(':id')
+	@UseGuards(ActiveCurrentProject)
 	remove(@Param('id') id: string) {
 		return this.audiofilesService.remove(+id);
 	}
