@@ -1,21 +1,28 @@
 import { Injectable } from '@nestjs/common';
 import { UpdateModelDto } from './dto/update-model.dto';
-import Project from 'src/projects/entities/project';
-import { DEFAULT_PROJECT, ProjectsService } from 'src/projects/projects.service';
+import {
+	DEFAULT_PROJECT,
+	ProjectsService,
+} from 'src/projects/projects.service';
 
 @Injectable()
 export class ModelsService {
-	constructor(private projectsService: ProjectsService){}
-	findOne(project: Project, modelName: string) {
-		if (project.models[modelName]){
+	constructor(private projectsService: ProjectsService) {}
+	findAll() {
+		return this.projectsService.getProject().models;
+	}
+
+	findOne(modelName: string) {
+		const project = this.projectsService.getProject();
+		if (project.models[modelName]) {
 			return project.models[modelName];
-		}else{
+		} else {
 			return DEFAULT_PROJECT.models[modelName];
 		}
 	}
 
-	async update(project: Project, modelName: string, updateModelDto: UpdateModelDto) {
-		switch(modelName){
+	async update(modelName: string, updateModelDto: UpdateModelDto) {
+		switch (modelName) {
 			case 'diarisation':
 				break;
 			case 'recognition':
@@ -29,10 +36,14 @@ export class ModelsService {
 			default:
 				return false;
 		}
-		if(updateModelDto == undefined || updateModelDto == null){
+		if (updateModelDto == undefined || updateModelDto == null) {
 			return false;
 		}
-		await this.projectsService.updateProject(project, 'change', `models/${modelName}`, updateModelDto);
-		return project.models[modelName];
+		await this.projectsService.updateProject(
+			'change',
+			`models/${modelName}`,
+			updateModelDto,
+		);
+		return this.projectsService.getProject().models[modelName];
 	}
 }

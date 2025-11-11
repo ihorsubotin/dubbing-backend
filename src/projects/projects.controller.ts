@@ -4,7 +4,6 @@ import {
 	Post,
 	Body,
 	Patch,
-	Param,
 	Delete,
 	UseGuards,
 	NotFoundException,
@@ -13,11 +12,7 @@ import {
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { diff } from 'node:util';
 import { ActiveCurrentProject } from './guard/current-project';
-import { GetProject } from './decorator/get-project';
-import Project from './entities/project';
 import type { Response } from 'express';
 import { SelectProjectDto } from './dto/select-project.dto';
 
@@ -37,8 +32,8 @@ export class ProjectsController {
 
 	@UseGuards(ActiveCurrentProject)
 	@Get()
-	getCurrentProject(@GetProject() project: Project) {
-		return project;
+	getCurrentProject() {
+		return this.projectsService.getProject();
 	}
 
 	@Post('select')
@@ -71,28 +66,25 @@ export class ProjectsController {
 
 	@UseGuards(ActiveCurrentProject)
 	@Patch()
-	update(
-		@GetProject() project: Project,
-		@Body() updateProjectDto: UpdateProjectDto,
-	) {
-		return this.projectsService.updateProjectRoot(project, updateProjectDto);
+	update(@Body() updateProjectDto: UpdateProjectDto) {
+		return this.projectsService.updateProjectRoot(updateProjectDto);
 	}
 
 	@UseGuards(ActiveCurrentProject)
 	@Post('undo')
-	undo(@GetProject() project: Project) {
-		return this.projectsService.applyUndo(project);
+	undo() {
+		return this.projectsService.applyUndo();
 	}
 
 	@UseGuards(ActiveCurrentProject)
 	@Post('redo')
-	redo(@GetProject() project: Project) {
-		return this.projectsService.applyRedo(project);
+	redo() {
+		return this.projectsService.applyRedo();
 	}
 
 	@UseGuards(ActiveCurrentProject)
 	@Delete()
-	remove(@GetProject() project: Project) {
-		return this.projectsService.remove(project);
+	remove() {
+		return this.projectsService.remove();
 	}
 }

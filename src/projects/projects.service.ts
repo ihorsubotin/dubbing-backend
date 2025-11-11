@@ -1,4 +1,10 @@
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+	Inject,
+	Injectable,
+	Logger,
+	NotFoundException,
+	UnauthorizedException,
+} from '@nestjs/common';
 import { CreateProjectDto } from './dto/create-project.dto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -9,27 +15,28 @@ import ProjectUpdate, {
 	ProjectUpdateOperation,
 	ProjectUpdateOptions,
 } from './entities/project-update';
+import { REQUEST } from '@nestjs/core';
 
 export const DEFAULT_PROJECT = {
 	audio: [],
 	models: {
 		diarisation: {
-			model: 'pyannote3.1'
+			model: 'pyannote3.1',
 		},
 		recognition: {
-			model: 'whisper'
+			model: 'whisper',
 		},
 		separation: {
-			model: 'demucs'
+			model: 'demucs',
 		},
 		translation: {
-			model: 'deepl'
+			model: 'deepl',
 		},
 		voiceConversion: {
-			model: 'chatterbox'
-		}
-	}
-}
+			model: 'chatterbox',
+		},
+	},
+};
 
 @Injectable()
 export class ProjectsService {
@@ -39,6 +46,8 @@ export class ProjectsService {
 	constructor(
 		@Inject(CACHE_MANAGER)
 		private cacheManager: Cache,
+		@Inject(REQUEST)
+		private readonly request: any,
 	) {}
 
 	async create(createProjectDto: CreateProjectDto) {
@@ -97,29 +106,29 @@ export class ProjectsService {
 		return projects;
 	}
 
-	checkMigration(project: Project){
+	checkMigration(project: Project) {
 		let changed = false;
-		for(const variable in DEFAULT_PROJECT){
-			if(project[variable] === undefined){
+		for (const variable in DEFAULT_PROJECT) {
+			if (project[variable] === undefined) {
 				changed = true;
 				project[variable] = DEFAULT_PROJECT[variable];
 			}
 		}
-		for(const audio of project.audio){
-			if(audio.type === undefined){
+		for (const audio of project.audio) {
+			if (audio.type === undefined) {
 				audio.type = 'raw';
 				changed = true;
 			}
 		}
-		for(const modelName in DEFAULT_PROJECT.models){
+		for (const modelName in DEFAULT_PROJECT.models) {
 			const model = project.models[modelName];
 			const modelRef = DEFAULT_PROJECT.models[modelName];
-			if(model === undefined){
+			if (model === undefined) {
 				project.models[modelName] = modelRef;
 				changed = true;
-			}else{
-				for(const param in modelRef){
-					if(model[param] === undefined){
+			} else {
+				for (const param in modelRef) {
+					if (model[param] === undefined) {
 						model[param] = modelRef[param];
 						changed = true;
 					}
@@ -129,7 +138,7 @@ export class ProjectsService {
 		return changed;
 	}
 
-	async readFromDisk(id: string){
+	async readFromDisk(id: string) {
 		if (
 			!id.match(
 				/^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
@@ -143,11 +152,11 @@ export class ProjectsService {
 		});
 		const config = JSON.parse(configFile);
 		const changed = this.checkMigration(config);
-		if(changed){
+		if (changed) {
 			const newFile = JSON.stringify(config);
-			await fs.promises.writeFile(fullPath, newFile, {encoding: 'utf-8'});
+			await fs.promises.writeFile(fullPath, newFile, { encoding: 'utf-8' });
 			await this.cacheManager.set(id, newFile);
-		}else{
+		} else {
 			await this.cacheManager.set(id, configFile);
 		}
 		return config;
@@ -168,7 +177,16 @@ export class ProjectsService {
 		}
 	}
 
-	async applyUndo(project: Project) {
+	getProject(): Project {
+		if (this.request.project) {
+			return this.request.project;
+		} else {
+			throw new UnauthorizedException(`Guard is not used for this request`);
+		}
+	}
+
+	async applyUndo() {
+		const project = this.getProject();
 		let update = project.undoUpdates.pop();
 		if (update === undefined) {
 			throw new NotFoundException('Unable to apply undo');
@@ -181,7 +199,8 @@ export class ProjectsService {
 		return project;
 	}
 
-	async applyRedo(project: Project) {
+	async applyRedo() {
+		const project = this.getProject();
 		const update = project.redoUpdates.pop();
 		if (update === undefined) {
 			throw new NotFoundException('Unable to apply redo');
@@ -193,20 +212,20 @@ export class ProjectsService {
 		return project;
 	}
 
-	updateProjectRoot(project: Project, content: Partial<Project>) {
-		return this.updateProject(project, 'change', '', content);
+	updateProjectRoot(content: Partial<Project>) {
+		return this.updateProject('change', '', content);
 	}
 
 	/** Updates project with saving changes and updo options
 	 * @param[updatePath] Path to change locations. For example, root: "". Audio with id: "audio/id:abc"
 	 */
 	async updateProject(
-		project: Project,
 		operationName: ProjectUpdateOperation,
 		updatePath: string,
 		content: any,
 		options: ProjectUpdateOptions = {},
 	) {
+		const project = this.getProject();
 		let update = new ProjectUpdate();
 		update.operationName = operationName;
 		update.path = updatePath;
@@ -225,7 +244,7 @@ export class ProjectsService {
 		return project;
 	}
 
-	updateValues(project: Project, update: ProjectUpdate) {
+	private updateValues(project: Project, update: ProjectUpdate) {
 		//Getting correct object path
 		const pathSplit = update.path.split('/');
 		let currentObject = project;
@@ -321,7 +340,7 @@ export class ProjectsService {
 		return update;
 	}
 
-	shallowAssign(target: object, obj: object) {
+	private shallowAssign(target: object, obj: object) {
 		if (typeof target === 'object' && typeof obj === 'object') {
 			for (const field in obj) {
 				if (typeof obj[field] !== 'object') {
@@ -333,7 +352,7 @@ export class ProjectsService {
 		}
 	}
 
-	getDiffeneces(target: object, obj: object) {
+	private getDiffeneces(target: object, obj: object) {
 		if (typeof target === 'object' && typeof obj === 'object') {
 			const diffeneces = {};
 			for (const field in obj) {
@@ -349,7 +368,8 @@ export class ProjectsService {
 		}
 	}
 
-	remove(project: Project) {
+	remove() {
+		const project = this.getProject();
 		//return `This action removes a #${id} project`;
 	}
 }
