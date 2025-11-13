@@ -1,15 +1,14 @@
 export type ProjectUpdateOperation =
 	| 'change'
 	| 'appendArray'
-	| 'changeArrayItem'
 	| 'removeArrayItem';
 
 export default class ProjectUpdate {
 	path: string;
 	operationName: ProjectUpdateOperation;
 	before?: any;
-	after: any;
-	options: ProjectUpdateOptions;
+	after?: any;
+	options?: ProjectUpdateOptions;
 
 	static reverseUpdate(update: ProjectUpdate) {
 		const newUpdate = Object.assign({}, update);

@@ -1,4 +1,11 @@
-export type AudioTypes = 'raw' | 'collection' | 'dubbed';
+export type AudioTypes =
+	| 'raw'
+	| 'voiceonly'
+	| 'backgroundonly'
+	| 'collection'
+	| 'dubbed'
+	| 'converted'
+	| 'output';
 export default class AudioFile {
 	fileName: string;
 	localPath: string;
@@ -6,4 +13,5 @@ export default class AudioFile {
 	size: number;
 	uploadTime?: Date;
 	type: AudioTypes;
+	versionOf?: string;
 }

@@ -1,5 +1,5 @@
 export class DiarisationEntry {
-	id: number;
+	id?: string;
 	speaker: string;
 	startTime: number;
 	endTime: number;

@@ -8,6 +8,7 @@ import {
 	UseGuards,
 	NotFoundException,
 	Res,
+	BadRequestException,
 } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
@@ -67,6 +68,9 @@ export class ProjectsController {
 	@UseGuards(ActiveCurrentProject)
 	@Patch()
 	update(@Body() updateProjectDto: UpdateProjectDto) {
+		if (!updateProjectDto) {
+			throw new BadRequestException(`Body should not be empty`);
+		}
 		return this.projectsService.updateProjectRoot(updateProjectDto);
 	}
 

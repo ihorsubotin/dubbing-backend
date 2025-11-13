@@ -5,6 +5,7 @@ import AudioFile from './entities/audiofile.entity';
 import path from 'node:path';
 import * as fs from 'node:fs';
 import { v4 as uuidv4 } from 'uuid';
+import CompositionAudio from './entities/composition-audio.entity';
 
 @Injectable()
 export class AudioFilesService {
@@ -30,7 +31,12 @@ export class AudioFilesService {
 		audioFile.uploadTime = new Date();
 		audioFile.size = file.size;
 		audioFile.type = 'raw';
-		await this.projectsService.updateProject('appendArray', 'audio', audioFile);
+		await this.projectsService.updateCurrentProject(
+			'appendArray',
+			'audio',
+			audioFile,
+			`Upload new file ${audioFile.name}`,
+		);
 		return audioFile;
 	}
 
@@ -65,16 +71,33 @@ export class AudioFilesService {
 		}
 	}
 
+	findComposition(fileName: string) {
+		const composition = new CompositionAudio();
+		const project = this.projectsService.getProject();
+		composition.raw = project.audio.find((value) => value.fileName == fileName);
+		composition.voiceonly = project.audio.find(
+			(value) => value.versionOf == fileName && value.type == 'voiceonly',
+		);
+		composition.backgroundonly = project.audio.find(
+			(value) => value.versionOf == fileName && value.type == 'backgroundonly',
+		);
+		composition.output = project.audio.find(
+			(value) => value.versionOf == fileName && value.type == 'output',
+		);
+		return composition;
+	}
+
 	async update(fileName: string, updateAudiofileDto: UpdateAudiofileDto) {
 		const project = this.projectsService.getProject();
 		const audio = project.audio.find((value) => value.fileName == fileName);
 		if (audio) {
-			await this.projectsService.updateProject(
+			await this.projectsService.updateCurrentProject(
 				'change',
 				`audio/fileName:${fileName}`,
 				{
 					name: updateAudiofileDto.name,
 				},
+				`Updating file ${audio.name}`,
 			);
 			return audio;
 		} else {

@@ -7,5 +7,6 @@ import { ProjectsModule } from 'src/projects/projects.module';
 	imports: [ProjectsModule],
 	controllers: [ModelsController],
 	providers: [ModelsService],
+	exports: [ModelsService],
 })
 export class ModelsModule {}

@@ -1,7 +1,6 @@
-import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsNumber, IsObject, IsOptional, IsString } from 'class-validator';
 
 export class UpdateDiarisationDto {
-	id: number;
 	@IsOptional()
 	@IsString()
 	speaker: string;

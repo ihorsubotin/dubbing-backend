@@ -9,34 +9,15 @@ import { CreateProjectDto } from './dto/create-project.dto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
-import Project from './entities/project';
+import Project, { DEFAULT_PROJECT } from './entities/project';
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
 import ProjectUpdate, {
 	ProjectUpdateOperation,
 	ProjectUpdateOptions,
 } from './entities/project-update';
 import { REQUEST } from '@nestjs/core';
-
-export const DEFAULT_PROJECT = {
-	audio: [],
-	models: {
-		diarisation: {
-			model: 'pyannote3.1',
-		},
-		recognition: {
-			model: 'whisper',
-		},
-		separation: {
-			model: 'demucs',
-		},
-		translation: {
-			model: 'deepl',
-		},
-		voiceConversion: {
-			model: 'chatterbox',
-		},
-	},
-};
+import { deprecate } from 'node:util';
+import ProjectVersion from './entities/project-version';
 
 @Injectable()
 export class ProjectsService {
@@ -187,13 +168,17 @@ export class ProjectsService {
 
 	async applyUndo() {
 		const project = this.getProject();
-		let update = project.undoUpdates.pop();
-		if (update === undefined) {
+		const version = project.undoUpdates.pop();
+		if (version === undefined) {
 			throw new NotFoundException('Unable to apply undo');
 		}
-		project.redoUpdates.push(update);
-		update = ProjectUpdate.reverseUpdate(update);
-		this.updateValues(project, update);
+		project.redoUpdates.push(version);
+		const updates = version.changes
+			.reverse()
+			.map((update) => ProjectUpdate.reverseUpdate(update));
+		for (const update of updates) {
+			this.updateValues(project, update);
+		}
 		project.editedTime = new Date();
 		await this.saveProjectOnDisk(project);
 		return project;
@@ -201,42 +186,90 @@ export class ProjectsService {
 
 	async applyRedo() {
 		const project = this.getProject();
-		const update = project.redoUpdates.pop();
-		if (update === undefined) {
+		const version = project.redoUpdates.pop();
+		if (version === undefined) {
 			throw new NotFoundException('Unable to apply redo');
 		}
-		this.updateValues(project, update);
+		project.undoUpdates.push(version);
+		for (const update of version.changes) {
+			this.updateValues(project, update);
+		}
 		project.editedTime = new Date();
-		project.undoUpdates.push(update);
 		await this.saveProjectOnDisk(project);
 		return project;
 	}
 
 	updateProjectRoot(content: Partial<Project>) {
-		return this.updateProject('change', '', content);
+		return this.updateCurrentProject(
+			'change',
+			'',
+			content,
+			`Changing project ${Object.keys(content).join(', ')}`,
+		);
+	}
+
+	/** Updates project with saving changes and updo options
+	 * @param[updatePath] Path to change locations. For example, root: "". Audio with id: "audio/id:abc"
+	 * @param[content] Content to add or remove
+	 */
+	async updateCurrentProject(
+		operationName: ProjectUpdateOperation,
+		updatePath: string,
+		content: any,
+		versionName: string = '',
+		options: ProjectUpdateOptions = {},
+	) {
+		const project = this.getProject();
+		return this.updateProject(
+			project,
+			operationName,
+			updatePath,
+			content,
+			versionName,
+			options,
+		);
 	}
 
 	/** Updates project with saving changes and updo options
 	 * @param[updatePath] Path to change locations. For example, root: "". Audio with id: "audio/id:abc"
 	 */
 	async updateProject(
+		project: Project,
 		operationName: ProjectUpdateOperation,
 		updatePath: string,
 		content: any,
+		versionName: string = '',
 		options: ProjectUpdateOptions = {},
 	) {
-		const project = this.getProject();
-		let update = new ProjectUpdate();
+		const update = new ProjectUpdate();
 		update.operationName = operationName;
 		update.path = updatePath;
-		update.after = content;
-		update.options = options;
-		update = this.updateValues(project, update);
-		//Saving changes
-		if (project.undoUpdates) {
-			project.undoUpdates.push(update);
+		if (operationName === 'removeArrayItem') {
+			update.before = content;
 		} else {
-			project.undoUpdates = [update];
+			update.after = content;
+		}
+		update.options = options;
+		const version = new ProjectVersion();
+		version.changes = [update];
+		version.name = versionName;
+		await this.applyVersion(project, version);
+		return project;
+	}
+
+	applyVersionForCurrent(version: ProjectVersion) {
+		const project = this.getProject();
+		return this.applyVersion(project, version);
+	}
+
+	async applyVersion(project: Project, version: ProjectVersion) {
+		for (const update of version.changes) {
+			this.updateValues(project, update);
+		}
+		if (project.undoUpdates) {
+			project.undoUpdates.push(version);
+		} else {
+			project.undoUpdates = [version];
 		}
 		project.redoUpdates = [];
 		project.editedTime = new Date();
@@ -340,6 +373,49 @@ export class ProjectsService {
 		return update;
 	}
 
+	private getStateDifference(original: any, target: any) {
+		if (
+			typeof original === typeof target &&
+			typeof original === 'object' &&
+			Array.isArray(original) === Array.isArray(original)
+		) {
+			if (Array.isArray(original)) {
+				return '';
+			} else {
+				const keys = new Set<string>();
+				for (const variable in original) {
+					keys.add(variable);
+				}
+				for (const variable in target) {
+					keys.add(variable);
+				}
+				const result = {};
+				for (const variable of keys.values()) {
+					if (variable === 'undoUpdates' || variable === 'redoUpdates') {
+						continue;
+					}
+					const difference = this.getStateDifference(
+						original[variable],
+						target[variable],
+					);
+					if (difference !== null) {
+						result[variable] = difference;
+					}
+				}
+				if (JSON.stringify(result) === '{}') {
+					return null;
+				} else {
+					return result;
+				}
+			}
+		} else {
+			if (JSON.stringify(original) === JSON.stringify(target)) {
+				return null;
+			} else {
+				return { $$before: original, $$after: target };
+			}
+		}
+	}
 	private shallowAssign(target: object, obj: object) {
 		if (typeof target === 'object' && typeof obj === 'object') {
 			for (const field in obj) {

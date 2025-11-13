@@ -1,9 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { UpdateModelDto } from './dto/update-model.dto';
-import {
-	DEFAULT_PROJECT,
-	ProjectsService,
-} from 'src/projects/projects.service';
+import { ProjectsService } from 'src/projects/projects.service';
+import { DEFAULT_PROJECT } from 'src/projects/entities/project';
 
 @Injectable()
 export class ModelsService {
@@ -39,10 +37,11 @@ export class ModelsService {
 		if (updateModelDto == undefined || updateModelDto == null) {
 			return false;
 		}
-		await this.projectsService.updateProject(
+		await this.projectsService.updateCurrentProject(
 			'change',
 			`models/${modelName}`,
 			updateModelDto,
+			`Updating ${modelName} model`,
 		);
 		return this.projectsService.getProject().models[modelName];
 	}

@@ -7,5 +7,6 @@ import { ProjectsModule } from 'src/projects/projects.module';
 	imports: [ProjectsModule],
 	controllers: [AudiofilesController],
 	providers: [AudioFilesService],
+	exports: [AudioFilesService],
 })
 export class AudiofilesModule {}
