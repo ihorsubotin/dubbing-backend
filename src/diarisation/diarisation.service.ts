@@ -6,41 +6,36 @@ import { ModelsService } from 'src/models/models.service';
 import { AudioFilesService } from 'src/audiofiles/audiofiles.service';
 import { DiarisationEntry } from './entities/diarisation.entity';
 import AudioFile from 'src/audiofiles/entities/audiofile.entity';
-import ProjectUpdate from 'src/projects/entities/project-update';
-import { v4 as uuidv4 } from 'uuid';
-import ProjectVersion from 'src/projects/entities/project-version';
 import CreateDiarisationDto from './dto/create-diarisation.dto';
+import { GenericCrudService } from 'src/projects/generic-crud.service';
 
 @Injectable()
-export class DiarisationService {
+export class DiarisationService extends GenericCrudService<DiarisationEntry> {
 	constructor(
-		private projectsService: ProjectsService,
+		protected projectsService: ProjectsService,
 		private modelsService: ModelsService,
 		private audioFilesService: AudioFilesService,
-	) {}
+	) {
+		super('diarisation', projectsService);
+	}
 
 	async create(createDiarisationDto: CreateDiarisationDto) {
-		const audio = this.audioFilesService.findOne(createDiarisationDto.fileName);
+		const audio = this.audioFilesService.findOne(createDiarisationDto.forAudio);
 		if (!audio || audio.type !== 'raw') {
-			return null;
+			return undefined;
 		}
-		const entry = new DiarisationEntry();
-		entry.fileName = createDiarisationDto.fileName;
-		entry.speaker = createDiarisationDto.speaker;
-		entry.startTime = createDiarisationDto.startTime;
-		entry.endTime = createDiarisationDto.endTime;
-		const version = new ProjectVersion();
-		version.name = 'Creating new diarisation entry';
-		version.changes = [this.createDiarisationUpdate(entry)];
-		await this.projectsService.applyVersionForCurrent(version);
+		const entry = await this.createOne(createDiarisationDto);
 		return entry;
 	}
 
 	async use(useDiarisationDto: UseDiarisationDto): Promise<number> {
-		if (useDiarisationDto.target) {
+		if (
+			useDiarisationDto.target !== null &&
+			useDiarisationDto.target !== undefined
+		) {
 			const audio = this.audioFilesService.findOne(useDiarisationDto.target);
 			if (audio) {
-				const oldDiarisation = this.findForAudio(audio.fileName);
+				const oldDiarisation = this.findForAudio(useDiarisationDto.target);
 				await this.removeArray(oldDiarisation);
 				this.fileDiarisation([audio]);
 				return 1;
@@ -57,17 +52,16 @@ export class DiarisationService {
 
 	fileDiarisation(audios: AudioFile[]) {
 		const model = this.modelsService.findOne('diarisation');
-		const reqests: DiarisationEntry[] = [];
+		const reqests: Partial<DiarisationEntry>[] = [];
 		for (const audio of audios) {
 			const composition = this.audioFilesService.findComposition(
 				audio.fileName,
 			);
 			if (composition.raw) {
 				reqests.push({
-					fileName: composition.raw.fileName,
+					forAudio: audio.id,
 					startTime: 5,
 					endTime: 10,
-					id: uuidv4(),
 					speaker: '1',
 				});
 			}
@@ -75,53 +69,27 @@ export class DiarisationService {
 		this.handleResults(reqests);
 	}
 
-	async handleResults(diarisationResults: DiarisationEntry[]) {
-		const version = new ProjectVersion();
-		version.name = 'Applied diarisation';
-		for (const entry of diarisationResults) {
-			version.changes.push(this.createDiarisationUpdate(entry));
-		}
-		await this.projectsService.applyVersionForCurrent(version);
+	async handleResults(diarisationResults: Partial<DiarisationEntry>[]) {
+		await this.createArray(diarisationResults, 'Applied diarisation');
+		return diarisationResults;
 	}
 
-	createDiarisationUpdate(entry: DiarisationEntry): ProjectUpdate {
-		entry.id = uuidv4();
-		const update = new ProjectUpdate();
-		update.after = entry;
-		update.operationName = 'appendArray';
-		update.path = 'diarisation';
-		return update;
+	findForAudio(id: number): DiarisationEntry[] {
+		const diarisations = this.findAll();
+		return diarisations.filter((value) => value.forAudio === id);
 	}
 
-	findAll(): DiarisationEntry[] {
-		const project = this.projectsService.getProject();
-		return project.diarisation;
-	}
-
-	findForAudio(fileName: string): DiarisationEntry[] {
-		const project = this.projectsService.getProject();
-		return project.diarisation.filter((value) => value.fileName == fileName);
-	}
-
-	findSingle(id: string): DiarisationEntry | undefined {
-		const project = this.projectsService.getProject();
-		return project.diarisation.find((value) => value?.id === id);
-	}
-
-	findAllSpeakers(fileName: string | undefined = undefined) {
-		const project = this.projectsService.getProject();
-		let diarisations = project.diarisation;
-		if (fileName) {
-			diarisations = diarisations.filter(
-				(value) => value.fileName === fileName,
-			);
+	findAllSpeakers(id: number | undefined = undefined) {
+		let diarisations = this.findAll();
+		if (id !== undefined) {
+			diarisations = diarisations.filter((value) => value.id === id);
 		}
 		const set = new Set<string>(diarisations.map((value) => value.speaker));
 		return [...set.values()];
 	}
 
-	async update(id: string, updateDiarisationDto: UpdateDiarisationDto) {
-		const entry = this.findSingle(id);
+	async update(id: number, updateDiarisationDto: UpdateDiarisationDto) {
+		const entry = this.findOne(id);
 		if (entry) {
 			const startTime = updateDiarisationDto.startTime
 				? updateDiarisationDto.startTime
@@ -132,45 +100,9 @@ export class DiarisationService {
 			if (endTime < startTime) {
 				return undefined;
 			}
-			await this.projectsService.updateCurrentProject(
-				'change',
-				`diarisation/id:${id}`,
-				updateDiarisationDto,
-				'Update to diarisation',
-			);
-			return this.findSingle(id);
+			return await this.updateOne(id, updateDiarisationDto);
 		} else {
 			return undefined;
 		}
-	}
-
-	async removeOne(id: string) {
-		const entry = this.findSingle(id);
-		if (entry) {
-			await this.projectsService.updateCurrentProject(
-				'removeArrayItem',
-				`diarisation`,
-				entry,
-				'Removed diarisation entry',
-			);
-			return entry;
-		} else {
-			return undefined;
-		}
-	}
-	async removeArray(diarisationEntries: DiarisationEntry[]) {
-		const updates: ProjectUpdate[] = [];
-		for (const entry of diarisationEntries) {
-			const update = new ProjectUpdate();
-			update.before = entry;
-			update.operationName = 'removeArrayItem';
-			update.path = 'diarisation';
-			updates.push(update);
-		}
-		const version = new ProjectVersion();
-		version.name = 'Removed diarisation batch';
-		version.changes = updates;
-		await this.projectsService.applyVersionForCurrent(version);
-		return diarisationEntries;
 	}
 }

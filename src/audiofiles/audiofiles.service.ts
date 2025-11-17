@@ -1,15 +1,17 @@
 import { Injectable } from '@nestjs/common';
-import { UpdateAudiofileDto } from './dto/update-audiofile.dto';
 import { ProjectsService } from 'src/projects/projects.service';
 import AudioFile from './entities/audiofile.entity';
 import path from 'node:path';
 import * as fs from 'node:fs';
 import { v4 as uuidv4 } from 'uuid';
 import CompositionAudio from './entities/composition-audio.entity';
+import { GenericCrudService } from 'src/projects/generic-crud.service';
 
 @Injectable()
-export class AudioFilesService {
-	constructor(private projectsService: ProjectsService) {}
+export class AudioFilesService extends GenericCrudService<AudioFile> {
+	constructor(protected projectsService: ProjectsService) {
+		super('audio', projectsService);
+	}
 
 	async uploadFile(file: Express.Multer.File) {
 		const project = this.projectsService.getProject();
@@ -31,39 +33,31 @@ export class AudioFilesService {
 		audioFile.uploadTime = new Date();
 		audioFile.size = file.size;
 		audioFile.type = 'raw';
-		await this.projectsService.updateCurrentProject(
-			'appendArray',
-			'audio',
-			audioFile,
-			`Upload new file ${audioFile.name}`,
-		);
+		await this.createOne(audioFile);
 		return audioFile;
 	}
 
 	getAudioStream(fileName: string) {
-		const project = this.projectsService.getProject();
-		const audio = project.audio.find((value) => value.fileName == fileName);
+		const audio = this.findByFileName(fileName);
 		if (audio) {
 			return fs.createReadStream(audio.localPath);
 		} else {
-			return null;
+			return undefined;
 		}
 	}
 
 	findAllRaw(name: string) {
-		const project = this.projectsService.getProject();
+		const audio = this.findAll();
 		if (name == undefined) {
 			name = '';
 		}
-		const audios = project.audio.filter(
+		return audio.filter(
 			(audio) => audio.type === 'raw' && audio.name.includes(name),
 		);
-		return audios;
 	}
 
-	findOne(fileName: string) {
-		const project = this.projectsService.getProject();
-		const audio = project.audio.find((value) => value.fileName == fileName);
+	findByFileName(fileName: string) {
+		const audio = this.findAll().find((value) => value.fileName == fileName);
 		if (audio) {
 			return audio;
 		} else {
@@ -73,36 +67,18 @@ export class AudioFilesService {
 
 	findComposition(fileName: string) {
 		const composition = new CompositionAudio();
-		const project = this.projectsService.getProject();
-		composition.raw = project.audio.find((value) => value.fileName == fileName);
-		composition.voiceonly = project.audio.find(
+		const audio = this.findAll();
+		composition.raw = audio.find((value) => value.fileName == fileName);
+		composition.voiceonly = audio.find(
 			(value) => value.versionOf == fileName && value.type == 'voiceonly',
 		);
-		composition.backgroundonly = project.audio.find(
+		composition.backgroundonly = audio.find(
 			(value) => value.versionOf == fileName && value.type == 'backgroundonly',
 		);
-		composition.output = project.audio.find(
+		composition.output = audio.find(
 			(value) => value.versionOf == fileName && value.type == 'output',
 		);
 		return composition;
-	}
-
-	async update(fileName: string, updateAudiofileDto: UpdateAudiofileDto) {
-		const project = this.projectsService.getProject();
-		const audio = project.audio.find((value) => value.fileName == fileName);
-		if (audio) {
-			await this.projectsService.updateCurrentProject(
-				'change',
-				`audio/fileName:${fileName}`,
-				{
-					name: updateAudiofileDto.name,
-				},
-				`Updating file ${audio.name}`,
-			);
-			return audio;
-		} else {
-			return null;
-		}
 	}
 
 	remove(id: number) {

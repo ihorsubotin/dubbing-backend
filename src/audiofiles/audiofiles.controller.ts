@@ -13,6 +13,9 @@ import {
 	NotFoundException,
 	StreamableFile,
 	Query,
+	ParseIntPipe,
+	Req,
+	BadRequestException,
 } from '@nestjs/common';
 import { AudioFilesService } from './audiofiles.service';
 import { UpdateAudiofileDto } from './dto/update-audiofile.dto';
@@ -27,7 +30,10 @@ export class AudiofilesController {
 
 	@Post()
 	@UseInterceptors(FileInterceptor('file'))
-	upload(@UploadedFile() file: Express.Multer.File) {
+	upload(@UploadedFile() file: Express.Multer.File, @Req() req) {
+		if (!file) {
+			throw new BadRequestException(`File is empty`);
+		}
 		return this.audiofilesService.uploadFile(file);
 	}
 
@@ -37,8 +43,8 @@ export class AudiofilesController {
 	}
 
 	@Get('info/:id')
-	findOne(@Param('id') fileName: string) {
-		const audio = this.audiofilesService.findOne(fileName);
+	findOne(@Param('id', ParseIntPipe) id: number) {
+		const audio = this.audiofilesService.findOne(id);
 		if (audio) {
 			return audio;
 		} else {
@@ -46,8 +52,8 @@ export class AudiofilesController {
 		}
 	}
 
-	@Get(':id')
-	getAudioStream(@Param('id') fileName: string, @Res() res: Response) {
+	@Get(':name')
+	getAudioStream(@Param('name') fileName: string, @Res() res: Response) {
 		const stream = this.audiofilesService.getAudioStream(fileName);
 		if (stream) {
 			stream.pipe(res);
@@ -59,22 +65,22 @@ export class AudiofilesController {
 
 	@Patch(':id')
 	async update(
-		@Param('id') fileName: string,
+		@Param('id', ParseIntPipe) id: number,
 		@Body() updateAudiofileDto: UpdateAudiofileDto,
 	) {
-		const update = await this.audiofilesService.update(
-			fileName,
+		const update = await this.audiofilesService.updateOne(
+			id,
 			updateAudiofileDto,
 		);
 		if (update) {
 			return update;
 		} else {
-			throw new NotFoundException(`File with name ${fileName} not found`);
+			throw new NotFoundException(`File not found`);
 		}
 	}
 
 	@Delete(':id')
-	remove(@Param('id') id: string) {
-		return this.audiofilesService.remove(+id);
+	remove(@Param('id', ParseIntPipe) id: number) {
+		return this.audiofilesService.remove(id);
 	}
 }

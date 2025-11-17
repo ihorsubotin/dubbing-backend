@@ -16,7 +16,6 @@ import ProjectUpdate, {
 	ProjectUpdateOptions,
 } from './entities/project-update';
 import { REQUEST } from '@nestjs/core';
-import { deprecate } from 'node:util';
 import ProjectVersion from './entities/project-version';
 
 @Injectable()
@@ -95,7 +94,7 @@ export class ProjectsService {
 				project[variable] = DEFAULT_PROJECT[variable];
 			}
 		}
-		for (const audio of project.audio) {
+		for (const audio of project.audio.array) {
 			if (audio.type === undefined) {
 				audio.type = 'raw';
 				changed = true;

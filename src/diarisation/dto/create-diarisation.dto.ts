@@ -1,8 +1,8 @@
 import { IsNumber, IsString } from 'class-validator';
 
 export default class CreateDiarisationDto {
-	@IsString()
-	fileName: string;
+	@IsNumber()
+	forAudio: number;
 	@IsString()
 	speaker: string;
 	@IsNumber()

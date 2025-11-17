@@ -1,7 +1,7 @@
 export class DiarisationEntry {
-	id?: string;
+	id: number;
 	speaker: string;
 	startTime: number;
 	endTime: number;
-	fileName: string;
+	forAudio: number;
 }

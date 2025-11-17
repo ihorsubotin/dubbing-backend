@@ -1,8 +1,8 @@
 import AudioFile from 'src/audiofiles/entities/audiofile.entity';
-import ProjectUpdate from './project-update';
 import { DiarisationEntry } from 'src/diarisation/entities/diarisation.entity';
 import { SubtitlesEntry } from 'src/subtitles/entities/subtitle.entity';
 import ProjectVersion from './project-version';
+import ProjectArray from './project-array';
 
 export default class Project {
 	id: string;
@@ -12,16 +12,17 @@ export default class Project {
 	editedTime: Date;
 	undoUpdates: ProjectVersion[] = [];
 	redoUpdates: ProjectVersion[] = [];
-	audio: AudioFile[];
+	audio: ProjectArray<AudioFile>;
 	models: any;
-	diarisation: DiarisationEntry[];
-	subtitles: SubtitlesEntry[];
+	diarisation: ProjectArray<DiarisationEntry>;
+	subtitles: ProjectArray<SubtitlesEntry>;
+	constructor() {}
 }
 
 export const DEFAULT_PROJECT: Partial<Project> = {
-	audio: [],
-	diarisation: [],
-	subtitles: [],
+	audio: { index: 0, array: [] },
+	diarisation: { index: 0, array: [] },
+	subtitles: { index: 0, array: [] },
 	undoUpdates: [],
 	redoUpdates: [],
 	models: {

@@ -9,6 +9,7 @@ import {
 	UseGuards,
 	NotFoundException,
 	BadRequestException,
+	ParseIntPipe,
 } from '@nestjs/common';
 import { DiarisationService } from './diarisation.service';
 import { UpdateDiarisationDto } from './dto/update-diarisation.dto';
@@ -27,7 +28,7 @@ export class DiarisationController {
 		if (entry) {
 			return entry;
 		} else {
-			throw new NotFoundException(`Audio filename not found`);
+			throw new NotFoundException(`Audiofile not found`);
 		}
 	}
 
@@ -46,20 +47,20 @@ export class DiarisationController {
 		return this.diarisationService.findAllSpeakers();
 	}
 
-	@Get(':name')
-	findOne(@Param('name') name: string) {
-		return this.diarisationService.findForAudio(name);
+	@Get(':id')
+	findOne(@Param('id', ParseIntPipe) id: number) {
+		return this.diarisationService.findForAudio(id);
 	}
 
 	@Patch(':id')
 	async update(
-		@Param('id') id: string,
+		@Param('id', ParseIntPipe) id: number,
 		@Body() updateDiarisationDto: UpdateDiarisationDto,
 	) {
 		if (!updateDiarisationDto) {
 			throw new BadRequestException(`Request body should not be empty`);
 		}
-		const entry = await this.diarisationService.update(
+		const entry = await this.diarisationService.updateOne(
 			id,
 			updateDiarisationDto,
 		);
@@ -71,7 +72,7 @@ export class DiarisationController {
 	}
 
 	@Delete(':id')
-	async remove(@Param('id') id: string) {
+	async remove(@Param('id', ParseIntPipe) id: number) {
 		const entry = await this.diarisationService.removeOne(id);
 		if (entry) {
 			return entry;

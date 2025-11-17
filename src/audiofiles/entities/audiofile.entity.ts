@@ -7,6 +7,7 @@ export type AudioTypes =
 	| 'converted'
 	| 'output';
 export default class AudioFile {
+	id: number;
 	fileName: string;
 	localPath: string;
 	name: string;
