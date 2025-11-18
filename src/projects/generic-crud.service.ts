@@ -88,6 +88,9 @@ export class GenericCrudService<T extends { id: number }> {
 		updateText: string | undefined = undefined,
 	) {
 		const entry = this.findOne(id);
+		if(update === null || update === undefined){
+			update = {};
+		}
 		if (entry) {
 			await this.projectsService.updateCurrentProject(
 				'change',

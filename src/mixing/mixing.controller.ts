@@ -6,12 +6,15 @@ import {
 	Patch,
 	Param,
 	Delete,
+	UseGuards,
 } from '@nestjs/common';
 import { MixingService } from './mixing.service';
 import { CreateMixingDto } from './dto/create-mixing.dto';
 import { UpdateMixingDto } from './dto/update-mixing.dto';
+import { ActiveCurrentProject } from 'src/projects/guard/current-project';
 
 @Controller('mixing')
+@UseGuards(ActiveCurrentProject)
 export class MixingController {
 	constructor(private readonly mixingService: MixingService) {}
 

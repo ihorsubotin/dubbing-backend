@@ -1,6 +1,6 @@
 import AudioFile from 'src/audiofiles/entities/audiofile.entity';
 import { DiarisationEntry } from 'src/diarisation/entities/diarisation.entity';
-import { SubtitlesEntry } from 'src/subtitles/entities/subtitle.entity';
+import { SubtitleEntry } from 'src/subtitles/entities/subtitle.entity';
 import ProjectVersion from './project-version';
 import ProjectArray from './project-array';
 
@@ -15,7 +15,7 @@ export default class Project {
 	audio: ProjectArray<AudioFile>;
 	models: any;
 	diarisation: ProjectArray<DiarisationEntry>;
-	subtitles: ProjectArray<SubtitlesEntry>;
+	subtitles: ProjectArray<SubtitleEntry>;
 	constructor() {}
 }
 

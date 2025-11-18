@@ -57,9 +57,6 @@ export class DiarisationController {
 		@Param('id', ParseIntPipe) id: number,
 		@Body() updateDiarisationDto: UpdateDiarisationDto,
 	) {
-		if (!updateDiarisationDto) {
-			throw new BadRequestException(`Request body should not be empty`);
-		}
 		const entry = await this.diarisationService.updateOne(
 			id,
 			updateDiarisationDto,

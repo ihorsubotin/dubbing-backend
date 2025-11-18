@@ -30,21 +30,24 @@ export class DiarisationService extends GenericCrudService<DiarisationEntry> {
 
 	async use(useDiarisationDto: UseDiarisationDto): Promise<number> {
 		if (
-			useDiarisationDto.target !== null &&
-			useDiarisationDto.target !== undefined
+			useDiarisationDto?.forAudio !== null &&
+			useDiarisationDto?.forAudio !== undefined
 		) {
-			const audio = this.audioFilesService.findOne(useDiarisationDto.target);
-			if (audio) {
-				const oldDiarisation = this.findForAudio(useDiarisationDto.target);
-				await this.removeArray(oldDiarisation);
-				this.fileDiarisation([audio]);
-				return 1;
+			let audios = useDiarisationDto.forAudio.map(
+				forAudio => this.audioFilesService.findOne(forAudio)
+			) as AudioFile[];
+			audios = audios.filter(audio => audio !== undefined);
+			const oldDiarisation: DiarisationEntry[] = [];
+			for(const audio of audios){
+				oldDiarisation.push(...this.findForAudio(audio.id));
 			}
-			return 0;
+			await this.removeArray(oldDiarisation, 'Removed old diarisation');
+			this.fileDiarisation(audios);
+			return audios.length;
 		} else {
 			const audios = this.audioFilesService.findAllRaw('');
 			const oldDiarisation = this.findAll();
-			await this.removeArray(oldDiarisation);
+			await this.removeArray(oldDiarisation, 'Removed old diarisation');
 			this.fileDiarisation(audios);
 			return audios.length;
 		}
@@ -82,7 +85,7 @@ export class DiarisationService extends GenericCrudService<DiarisationEntry> {
 	findAllSpeakers(id: number | undefined = undefined) {
 		let diarisations = this.findAll();
 		if (id !== undefined) {
-			diarisations = diarisations.filter((value) => value.id === id);
+			diarisations = diarisations.filter((value) => value.forAudio === id);
 		}
 		const set = new Set<string>(diarisations.map((value) => value.speaker));
 		return [...set.values()];

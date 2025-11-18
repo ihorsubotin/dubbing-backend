@@ -6,40 +6,81 @@ import {
 	Patch,
 	Param,
 	Delete,
+	Query,
+	ParseIntPipe,
+	NotFoundException,
+	UseGuards,
 } from '@nestjs/common';
 import { SubtitlesService } from './subtitles.service';
 import { CreateSubtitleDto } from './dto/create-subtitle.dto';
 import { UpdateSubtitleDto } from './dto/update-subtitle.dto';
+import GenerateSubtitlesDto from './dto/generate-subtitles.dto';
+import TranslateSubtitlesDto from './dto/translate-subtitles.dto';
+import { ActiveCurrentProject } from 'src/projects/guard/current-project';
 
 @Controller('subtitles')
+@UseGuards(ActiveCurrentProject)
 export class SubtitlesController {
 	constructor(private readonly subtitlesService: SubtitlesService) {}
 
+	@Post('generate')
+	async generate(@Body() generateSubtitlesDto: GenerateSubtitlesDto){
+		return this.subtitlesService.generate(generateSubtitlesDto);
+	}
+
+	@Post('translate')
+	async translate(@Body() translateSubtitlesDto: TranslateSubtitlesDto){
+		return this.subtitlesService.translate(translateSubtitlesDto);
+	}
+
 	@Post()
-	create(@Body() createSubtitleDto: CreateSubtitleDto) {
-		return this.subtitlesService.create(createSubtitleDto);
+	async create(@Body() createSubtitleDto: CreateSubtitleDto) {
+		const entry = await this.subtitlesService.create(createSubtitleDto);
+		if (entry) {
+			return entry;
+		} else {
+			throw new NotFoundException(`Audiofile not found`);
+		}
 	}
 
 	@Get()
-	findAll() {
-		return this.subtitlesService.findAll();
+	search(@Query() querry: {forAudio: number, language: string}) {
+		return this.subtitlesService.search(querry.forAudio, querry.language);
 	}
 
-	@Get(':id')
-	findOne(@Param('id') id: string) {
-		return this.subtitlesService.findOne(+id);
+	@Get('languages')
+	languages(@Query('For audio') forAudio: number){
+		return this.subtitlesService.findAllLanguages(+forAudio);
+	}
+
+	@Get(':forAudio')
+	findForAudio(@Param('forAudio', ParseIntPipe) forAudio: number) {
+		return this.subtitlesService.search(forAudio);
 	}
 
 	@Patch(':id')
-	update(
-		@Param('id') id: string,
+	async update(
+		@Param('id', ParseIntPipe) id: number,
 		@Body() updateSubtitleDto: UpdateSubtitleDto,
 	) {
-		return this.subtitlesService.update(+id, updateSubtitleDto);
+		const entry = await this.subtitlesService.updateOne(
+			id,
+			updateSubtitleDto,
+		);
+		if (entry) {
+			return entry;
+		} else {
+			throw new NotFoundException();
+		}
 	}
 
 	@Delete(':id')
-	remove(@Param('id') id: string) {
-		return this.subtitlesService.remove(+id);
+	async remove(@Param('id', ParseIntPipe) id: number) {
+		const entry = await this.subtitlesService.remove(id);
+		if (entry) {
+			return entry;
+		} else {
+			throw new NotFoundException();
+		}
 	}
 }
