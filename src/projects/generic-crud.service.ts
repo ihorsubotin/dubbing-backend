@@ -8,7 +8,9 @@ export class GenericCrudService<T extends { id: number }> {
 		private variableName: string,
 		protected projectsService: ProjectsService,
 	) {
-		if (!['audio', 'diarisation', 'subtitles'].includes(variableName)) {
+		if (
+			!['audio', 'diarisations', 'subtitles', 'mappings'].includes(variableName)
+		) {
 			throw new Error('variable type not found');
 		}
 	}
@@ -88,7 +90,7 @@ export class GenericCrudService<T extends { id: number }> {
 		updateText: string | undefined = undefined,
 	) {
 		const entry = this.findOne(id);
-		if(update === null || update === undefined){
+		if (update === null || update === undefined) {
 			update = {};
 		}
 		if (entry) {

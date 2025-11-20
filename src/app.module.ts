@@ -12,11 +12,11 @@ import { ConversionModule } from './conversion/conversion.module';
 	imports: [
 		ConfigModule.forRoot(),
 		ProjectsModule,
+		MixingModule,
 		AudiofilesModule,
 		ModelsModule,
 		DiarisationModule,
 		SubtitlesModule,
-		MixingModule,
 		ConversionModule,
 	],
 	controllers: [],

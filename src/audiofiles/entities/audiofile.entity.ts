@@ -14,5 +14,5 @@ export default class AudioFile {
 	size: number;
 	uploadTime?: Date;
 	type: AudioTypes;
-	versionOf?: string;
+	versionOf?: number;
 }

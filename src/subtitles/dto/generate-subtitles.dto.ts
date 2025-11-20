@@ -1,8 +1,8 @@
-import { IsArray, IsNumber, IsOptional } from "class-validator";
+import { IsArray, IsNumber, IsOptional } from 'class-validator';
 
-export default class GenerateSubtitlesDto{
+export default class GenerateSubtitlesDto {
 	@IsOptional()
 	@IsArray()
-	@IsNumber({}, {each: true})
+	@IsNumber({}, { each: true })
 	forAudio: number[];
 }

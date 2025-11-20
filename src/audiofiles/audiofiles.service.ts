@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ProjectsService } from 'src/projects/projects.service';
-import AudioFile from './entities/audiofile.entity';
+import AudioFile, { AudioTypes } from './entities/audiofile.entity';
 import path from 'node:path';
 import * as fs from 'node:fs';
 import { v4 as uuidv4 } from 'uuid';
@@ -13,7 +13,7 @@ export class AudioFilesService extends GenericCrudService<AudioFile> {
 		super('audio', projectsService);
 	}
 
-	async uploadFile(file: Express.Multer.File) {
+	async uploadFile(file: Express.Multer.File, type: AudioTypes = 'raw') {
 		const project = this.projectsService.getProject();
 		const audioFile = new AudioFile();
 		const audioDir = path.join(
@@ -32,7 +32,7 @@ export class AudioFilesService extends GenericCrudService<AudioFile> {
 		audioFile.name = path.parse(file.originalname).name;
 		audioFile.uploadTime = new Date();
 		audioFile.size = file.size;
-		audioFile.type = 'raw';
+		audioFile.type = type;
 		await this.createOne(audioFile);
 		return audioFile;
 	}
@@ -46,13 +46,13 @@ export class AudioFilesService extends GenericCrudService<AudioFile> {
 		}
 	}
 
-	findAllRaw(name: string) {
+	search(name: string, type: AudioTypes = 'raw') {
 		const audio = this.findAll();
 		if (name == undefined) {
 			name = '';
 		}
 		return audio.filter(
-			(audio) => audio.type === 'raw' && audio.name.includes(name),
+			(audio) => audio.type === type && audio.name.includes(name),
 		);
 	}
 
@@ -65,20 +65,32 @@ export class AudioFilesService extends GenericCrudService<AudioFile> {
 		}
 	}
 
-	findComposition(fileName: string) {
+	findComposition(id: number) {
 		const composition = new CompositionAudio();
 		const audio = this.findAll();
-		composition.raw = audio.find((value) => value.fileName == fileName);
+		composition.raw = audio.find((value) => value.id == id);
 		composition.voiceonly = audio.find(
-			(value) => value.versionOf == fileName && value.type == 'voiceonly',
+			(value) => value.versionOf == id && value.type == 'voiceonly',
 		);
 		composition.backgroundonly = audio.find(
-			(value) => value.versionOf == fileName && value.type == 'backgroundonly',
+			(value) => value.versionOf == id && value.type == 'backgroundonly',
 		);
 		composition.output = audio.find(
-			(value) => value.versionOf == fileName && value.type == 'output',
+			(value) => value.versionOf == id && value.type == 'output',
 		);
 		return composition;
+	}
+
+	findConverted(id: number) {
+		return this.findAll().find(
+			(audio) => audio.type == 'converted' && audio.versionOf == id,
+		);
+	}
+
+	findOutputFor(id: number) {
+		return this.findAll().filter(
+			(audio) => audio.type == 'output' && audio.versionOf == id,
+		);
 	}
 
 	remove(id: number) {

@@ -34,17 +34,41 @@ export class AudiofilesController {
 		if (!file) {
 			throw new BadRequestException(`File is empty`);
 		}
-		return this.audiofilesService.uploadFile(file);
+		return this.audiofilesService.uploadFile(file, 'raw');
 	}
 
 	@Get()
 	findAllRaw(@Query('name') name: string) {
-		return this.audiofilesService.findAllRaw(name);
+		return this.audiofilesService.search(name, 'raw');
+	}
+
+	@Get('dubbed')
+	findAllDubbed(@Query('name') name: string) {
+		return this.audiofilesService.search(name, 'dubbed');
+	}
+
+	@Post('dubbed')
+	@UseInterceptors(FileInterceptor('file'))
+	uploadDubbed(@UploadedFile() file: Express.Multer.File, @Req() req) {
+		if (!file) {
+			throw new BadRequestException(`File is empty`);
+		}
+		return this.audiofilesService.uploadFile(file, 'dubbed');
 	}
 
 	@Get('info/:id')
 	findOne(@Param('id', ParseIntPipe) id: number) {
 		const audio = this.audiofilesService.findOne(id);
+		if (audio) {
+			return audio;
+		} else {
+			throw new NotFoundException(`Audio file not found`);
+		}
+	}
+
+	@Get('info/:id/converted')
+	findConverted(@Param('id', ParseIntPipe) id: number) {
+		const audio = this.audiofilesService.findConverted(id);
 		if (audio) {
 			return audio;
 		} else {

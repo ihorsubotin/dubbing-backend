@@ -24,12 +24,12 @@ export class SubtitlesController {
 	constructor(private readonly subtitlesService: SubtitlesService) {}
 
 	@Post('generate')
-	async generate(@Body() generateSubtitlesDto: GenerateSubtitlesDto){
+	async generate(@Body() generateSubtitlesDto: GenerateSubtitlesDto) {
 		return this.subtitlesService.generate(generateSubtitlesDto);
 	}
 
 	@Post('translate')
-	async translate(@Body() translateSubtitlesDto: TranslateSubtitlesDto){
+	async translate(@Body() translateSubtitlesDto: TranslateSubtitlesDto) {
 		return this.subtitlesService.translate(translateSubtitlesDto);
 	}
 
@@ -44,12 +44,12 @@ export class SubtitlesController {
 	}
 
 	@Get()
-	search(@Query() querry: {forAudio: number, language: string}) {
+	search(@Query() querry: { forAudio: number; language: string }) {
 		return this.subtitlesService.search(querry.forAudio, querry.language);
 	}
 
 	@Get('languages')
-	languages(@Query('For audio') forAudio: number){
+	languages(@Query('For audio') forAudio: number) {
 		return this.subtitlesService.findAllLanguages(+forAudio);
 	}
 
@@ -63,10 +63,7 @@ export class SubtitlesController {
 		@Param('id', ParseIntPipe) id: number,
 		@Body() updateSubtitleDto: UpdateSubtitleDto,
 	) {
-		const entry = await this.subtitlesService.updateOne(
-			id,
-			updateSubtitleDto,
-		);
+		const entry = await this.subtitlesService.updateOne(id, updateSubtitleDto);
 		if (entry) {
 			return entry;
 		} else {

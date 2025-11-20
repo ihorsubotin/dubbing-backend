@@ -16,7 +16,7 @@ export class DiarisationService extends GenericCrudService<DiarisationEntry> {
 		private modelsService: ModelsService,
 		private audioFilesService: AudioFilesService,
 	) {
-		super('diarisation', projectsService);
+		super('diarisations', projectsService);
 	}
 
 	async create(createDiarisationDto: CreateDiarisationDto) {
@@ -33,19 +33,19 @@ export class DiarisationService extends GenericCrudService<DiarisationEntry> {
 			useDiarisationDto?.forAudio !== null &&
 			useDiarisationDto?.forAudio !== undefined
 		) {
-			let audios = useDiarisationDto.forAudio.map(
-				forAudio => this.audioFilesService.findOne(forAudio)
+			let audios = useDiarisationDto.forAudio.map((forAudio) =>
+				this.audioFilesService.findOne(forAudio),
 			) as AudioFile[];
-			audios = audios.filter(audio => audio !== undefined);
+			audios = audios.filter((audio) => audio !== undefined);
 			const oldDiarisation: DiarisationEntry[] = [];
-			for(const audio of audios){
+			for (const audio of audios) {
 				oldDiarisation.push(...this.findForAudio(audio.id));
 			}
 			await this.removeArray(oldDiarisation, 'Removed old diarisation');
 			this.fileDiarisation(audios);
 			return audios.length;
 		} else {
-			const audios = this.audioFilesService.findAllRaw('');
+			const audios = this.audioFilesService.search('', 'raw');
 			const oldDiarisation = this.findAll();
 			await this.removeArray(oldDiarisation, 'Removed old diarisation');
 			this.fileDiarisation(audios);
@@ -57,9 +57,7 @@ export class DiarisationService extends GenericCrudService<DiarisationEntry> {
 		const model = this.modelsService.findOne('diarisation');
 		const reqests: Partial<DiarisationEntry>[] = [];
 		for (const audio of audios) {
-			const composition = this.audioFilesService.findComposition(
-				audio.fileName,
-			);
+			const composition = this.audioFilesService.findComposition(audio.id);
 			if (composition.raw) {
 				reqests.push({
 					forAudio: audio.id,

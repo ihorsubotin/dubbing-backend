@@ -3,6 +3,7 @@ import { DiarisationEntry } from 'src/diarisation/entities/diarisation.entity';
 import { SubtitleEntry } from 'src/subtitles/entities/subtitle.entity';
 import ProjectVersion from './project-version';
 import ProjectArray from './project-array';
+import { AudioMap } from 'src/mixing/entities/audio-map.entity';
 
 export default class Project {
 	id: string;
@@ -14,15 +15,17 @@ export default class Project {
 	redoUpdates: ProjectVersion[] = [];
 	audio: ProjectArray<AudioFile>;
 	models: any;
-	diarisation: ProjectArray<DiarisationEntry>;
+	diarisations: ProjectArray<DiarisationEntry>;
 	subtitles: ProjectArray<SubtitleEntry>;
+	mappings: ProjectArray<AudioMap>;
 	constructor() {}
 }
 
 export const DEFAULT_PROJECT: Partial<Project> = {
 	audio: { index: 0, array: [] },
-	diarisation: { index: 0, array: [] },
+	diarisations: { index: 0, array: [] },
 	subtitles: { index: 0, array: [] },
+	mappings: { index: 0, array: [] },
 	undoUpdates: [],
 	redoUpdates: [],
 	models: {
