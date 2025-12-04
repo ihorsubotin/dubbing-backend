@@ -6,15 +6,20 @@ import {
 	Param,
 	UseGuards,
 	NotFoundException,
+	Post,
 } from '@nestjs/common';
 import { ModelsService } from './models.service';
 import { UpdateModelDto } from './dto/update-model.dto';
 import { ActiveCurrentProject } from 'src/projects/guard/current-project';
+import RabbitMQService from './rabbitmq.service';
 
 @Controller('models')
 @UseGuards(ActiveCurrentProject)
 export class ModelsController {
-	constructor(private readonly modelsService: ModelsService) {}
+	constructor(
+		private readonly modelsService: ModelsService,
+		private readonly rabbitMQService: RabbitMQService
+	) {}
 
 	@Get()
 	findAll() {
@@ -39,5 +44,10 @@ export class ModelsController {
 				`Unable to update model with given parameters`,
 			);
 		}
+	}
+
+	@Post('emit')
+	emit(){
+		this.rabbitMQService.test();
 	}
 }

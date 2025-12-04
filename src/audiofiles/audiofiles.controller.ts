@@ -34,7 +34,7 @@ export class AudiofilesController {
 		if (!file) {
 			throw new BadRequestException(`File is empty`);
 		}
-		return this.audiofilesService.uploadFile(file, 'raw');
+		return this.audiofilesService.loadNewFile(file, 'raw');
 	}
 
 	@Get()
@@ -53,7 +53,7 @@ export class AudiofilesController {
 		if (!file) {
 			throw new BadRequestException(`File is empty`);
 		}
-		return this.audiofilesService.uploadFile(file, 'dubbed');
+		return this.audiofilesService.loadNewFile(file, 'dubbed');
 	}
 
 	@Get('info/:id')
@@ -63,6 +63,16 @@ export class AudiofilesController {
 			return audio;
 		} else {
 			throw new NotFoundException(`Audio file not found`);
+		}
+	}
+
+	@Get('info/:id/composition')
+	findComposition(@Param('id', ParseIntPipe) id: number) {
+		const composition = this.audiofilesService.findComposition(id);
+		if (composition.raw) {
+			return composition;
+		} else {
+			throw new NotFoundException(`Composition not found`);
 		}
 	}
 

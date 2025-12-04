@@ -14,7 +14,18 @@ async function bootstrap() {
 			},
 		}),
 	);
-	app.setGlobalPrefix('/api');
+	app.enableCors({
+	    origin: [
+		    'http://localhost:5173',     
+		    'http://localhost:5174',   
+		    'http://localhost:3000',    
+		    process.env.ORIGIN
+	    ],
+	    credentials: true,         
+	    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+	    allowedHeaders: ['Content-Type', 'Authorization', 'X-Site-Language'],
+	 });
+	app.setGlobalPrefix('/api', {exclude: ['internal/*param']});
 	await app.listen(process.env.APP_PORT ?? 3000);
 	Logger.log(`App is running on ${process.env.ORIGIN}:${process.env.APP_PORT}`);
 }

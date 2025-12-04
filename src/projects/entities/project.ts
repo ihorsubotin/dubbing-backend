@@ -44,5 +44,8 @@ export const DEFAULT_PROJECT: Partial<Project> = {
 		voiceConversion: {
 			model: 'chatterbox',
 		},
+		render: {
+			format: 'wav'
+		}
 	},
 };

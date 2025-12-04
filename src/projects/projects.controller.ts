@@ -44,7 +44,7 @@ export class ProjectsController {
 	) {
 		const project = await this.projectsService.findOne(body.id);
 		if (project) {
-			res.cookie('project-id', project.id);
+			res.cookie('project-id', project.id, {sameSite: "none", secure: true});
 			return project;
 		} else {
 			throw new NotFoundException(`Project ${body.id} not found`);

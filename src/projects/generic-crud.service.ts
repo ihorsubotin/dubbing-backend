@@ -24,6 +24,7 @@ export class GenericCrudService<T extends { id: number }> {
 	async createOne(
 		entry: Partial<T>,
 		updateText: string | undefined = undefined,
+		skipSaving: boolean = false
 	) {
 		const currentArray = this.currentArray();
 		entry.id = currentArray.index;
@@ -39,6 +40,8 @@ export class GenericCrudService<T extends { id: number }> {
 		version.name = updateText
 			? updateText
 			: `Creating new ${this.variableName} entry`;
+		if(skipSaving)
+			version.skipSaving = true;
 		version.changes = [updateEntry, updateIndex];
 		await this.projectsService.applyVersionForCurrent(version);
 		return entry;
@@ -47,6 +50,7 @@ export class GenericCrudService<T extends { id: number }> {
 	async createArray(
 		entries: Partial<T>[],
 		updateText: string | undefined = undefined,
+		skipSaving: boolean = false
 	) {
 		const currentArray = this.currentArray();
 		let index = currentArray.index;
@@ -70,6 +74,7 @@ export class GenericCrudService<T extends { id: number }> {
 			? updateText
 			: `Creating new ${this.variableName} entries`;
 		version.changes = updates;
+		version.skipSaving = skipSaving;
 		await this.projectsService.applyVersionForCurrent(version);
 		return entries;
 	}
@@ -88,6 +93,7 @@ export class GenericCrudService<T extends { id: number }> {
 		id: number,
 		update: Partial<T>,
 		updateText: string | undefined = undefined,
+		skipSaving: boolean = false
 	) {
 		const entry = this.findOne(id);
 		if (update === null || update === undefined) {
@@ -99,6 +105,7 @@ export class GenericCrudService<T extends { id: number }> {
 				`${this.variableName}/array/id:${id}`,
 				update,
 				updateText ? updateText : `Update to ${this.variableName}`,
+				skipSaving
 			);
 			return this.findOne(id);
 		} else {

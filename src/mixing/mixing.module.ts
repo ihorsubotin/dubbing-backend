@@ -4,9 +4,10 @@ import { MappingsController } from './mappings.controller';
 import { MixingController } from './mixing.controller';
 import { AudiofilesModule } from 'src/audiofiles/audiofiles.module';
 import { ProjectsModule } from 'src/projects/projects.module';
+import { ModelsModule } from 'src/models/models.module';
 
 @Module({
-	imports: [ProjectsModule, AudiofilesModule],
+	imports: [ProjectsModule, AudiofilesModule, ModelsModule],
 	controllers: [MappingsController, MixingController],
 	providers: [MixingService],
 })

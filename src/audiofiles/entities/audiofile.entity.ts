@@ -1,5 +1,6 @@
 export type AudioTypes =
 	| 'raw'
+	| 'wav'
 	| 'voiceonly'
 	| 'backgroundonly'
 	| 'collection'
@@ -15,4 +16,8 @@ export default class AudioFile {
 	uploadTime?: Date;
 	type: AudioTypes;
 	versionOf?: number;
+	duration?: number;
+	samplingRate?: number;
+	processed?: boolean;
+	errorMessage?: string;
 }

@@ -34,6 +34,8 @@ export class ProjectsService {
 		const uuid = uuidv4();
 		const projectPath = path.join(this.rootPath, uuid);
 		await fs.promises.mkdir(projectPath);
+		const configPath = path.join(projectPath, 'project.json');
+		await fs.promises.writeFile(configPath, '');
 		const project = new Project();
 		project.id = uuid;
 		project.creationTime = new Date();
@@ -49,7 +51,15 @@ export class ProjectsService {
 		const configFile = JSON.stringify(project);
 		await this.cacheManager.set(project.id, configFile);
 		const filePath = path.join(this.rootPath, project.id, 'project.json');
-		await fs.promises.writeFile(filePath, configFile);
+		await this.safeWriteFile(configFile, filePath);
+	}
+
+	async safeWriteFile(data: string, filePath: string){
+		const oldPath = filePath + '.old';
+		const newPath = filePath + '.new';
+		await fs.promises.writeFile(newPath, data);
+		await fs.promises.rename(filePath, oldPath);
+		await fs.promises.rename(newPath, filePath);
 	}
 
 	async findAll() {
@@ -130,7 +140,7 @@ export class ProjectsService {
 		const configFile = await fs.promises.readFile(fullPath, {
 			encoding: 'utf-8',
 		});
-		const config = JSON.parse(configFile);
+		const config: Project = JSON.parse(configFile);
 		const changed = this.checkMigration(config);
 		if (changed) {
 			const newFile = JSON.stringify(config);
@@ -139,6 +149,11 @@ export class ProjectsService {
 		} else {
 			await this.cacheManager.set(id, configFile);
 		}
+		// const {undoUpdates, redoUpdates, ...project} = config;
+		// const proj = project as any;
+		// proj.undoUpdates = undoUpdates.map(value=>{name: value.name});
+		// proj.redoUpdates = redoUpdates.map(value=>{name: value.name});
+		// return proj;
 		return config;
 	}
 
@@ -172,8 +187,7 @@ export class ProjectsService {
 			throw new NotFoundException('Unable to apply undo');
 		}
 		project.redoUpdates.push(version);
-		const updates = version.changes
-			.reverse()
+		const updates = version.changes.toReversed()
 			.map((update) => ProjectUpdate.reverseUpdate(update));
 		for (const update of updates) {
 			this.updateValues(project, update);
@@ -216,7 +230,8 @@ export class ProjectsService {
 		updatePath: string,
 		content: any,
 		versionName: string = '',
-		options: ProjectUpdateOptions = {},
+		skipSaving: boolean = false,
+		options: ProjectUpdateOptions = {}
 	) {
 		const project = this.getProject();
 		return this.updateProject(
@@ -225,6 +240,7 @@ export class ProjectsService {
 			updatePath,
 			content,
 			versionName,
+			skipSaving,
 			options,
 		);
 	}
@@ -238,7 +254,8 @@ export class ProjectsService {
 		updatePath: string,
 		content: any,
 		versionName: string = '',
-		options: ProjectUpdateOptions = {},
+		skipSaving: boolean = false,
+		options: ProjectUpdateOptions = {}
 	) {
 		const update = new ProjectUpdate();
 		update.operationName = operationName;
@@ -252,6 +269,7 @@ export class ProjectsService {
 		const version = new ProjectVersion();
 		version.changes = [update];
 		version.name = versionName;
+		version.skipSaving = skipSaving;
 		await this.applyVersion(project, version);
 		return project;
 	}
@@ -265,12 +283,20 @@ export class ProjectsService {
 		for (const update of version.changes) {
 			this.updateValues(project, update);
 		}
-		if (project.undoUpdates) {
-			project.undoUpdates.push(version);
-		} else {
-			project.undoUpdates = [version];
+		if(version.skipSaving){
+			const last = project.undoUpdates?.pop();
+			if (last) {
+				last.changes.push(...version.changes);
+				project.undoUpdates.push(last);
+			}
+		}else{
+			if (project.undoUpdates) {
+				project.undoUpdates.push(version);
+			} else {
+				project.undoUpdates = [version];
+			}
+			project.redoUpdates = [];
 		}
-		project.redoUpdates = [];
 		project.editedTime = new Date();
 		await this.saveProjectOnDisk(project);
 		return project;
@@ -419,7 +445,11 @@ export class ProjectsService {
 		if (typeof target === 'object' && typeof obj === 'object') {
 			for (const field in obj) {
 				if (typeof obj[field] !== 'object') {
-					target[field] = obj[field];
+					if(obj[field] === '___undefined___'){
+						target[field] = undefined;
+					}else{
+						target[field] = obj[field];
+					}
 				}
 			}
 		} else {
@@ -432,7 +462,11 @@ export class ProjectsService {
 			const diffeneces = {};
 			for (const field in obj) {
 				if (typeof obj[field] !== 'object' && target[field] !== obj[field]) {
-					diffeneces[field] = target[field];
+					if(target[field] === undefined){
+						diffeneces[field] = '___undefined___'
+					}else{
+						diffeneces[field] = target[field];
+					}
 				}
 			}
 			return diffeneces;

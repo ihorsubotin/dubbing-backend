@@ -5,12 +5,15 @@ import { ProjectsService } from 'src/projects/projects.service';
 import { UpdateAudioMapDto } from './dto/update-map.dto';
 import { CreateAudioMapDto } from './dto/create-map.dto';
 import { AudioFilesService } from 'src/audiofiles/audiofiles.service';
+import { ModelsService } from 'src/models/models.service';
+import AudioFile from 'src/audiofiles/entities/audiofile.entity';
 
 @Injectable()
 export class MixingService extends GenericCrudService<AudioMap> {
 	constructor(
 		protected projectsService: ProjectsService,
 		private audioFilesService: AudioFilesService,
+		private modelsService: ModelsService
 	) {
 		super('mappings', projectsService);
 	}
@@ -23,8 +26,16 @@ export class MixingService extends GenericCrudService<AudioMap> {
 		return { filename: 'helloconverted' };
 	}
 
-	produceOutput(id: number) {
-		return { filename: 'hello' };
+	async produceOutput(id: number) {
+		const audioFile = new AudioFile();
+		audioFile.name = 'Render at ' + new Date().toISOString();
+		audioFile.type = 'output';
+		audioFile.processed = false;
+		audioFile.versionOf = id;
+		const mappings = this.findForAudio(id);
+		const audio = await this.audioFilesService.createOne(audioFile, 'Rendered composition');
+		this.modelsService.sendRenderRequest(mappings, audio.id as number);
+		return audio;
 	}
 
 	create(createAudioMapDto: CreateAudioMapDto) {
