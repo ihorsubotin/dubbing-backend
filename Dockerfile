@@ -2,7 +2,7 @@ FROM node:20
 
 WORKDIR /src
 
-COPY package-lock.json ./
+COPY package.json ./
 
 RUN npm install
 
