@@ -18,8 +18,8 @@ export class MixingService extends GenericCrudService<AudioMap> {
 		super('mappings', projectsService);
 	}
 
-	separateAudio() {
-		return { filename: 'helloseparate' };
+	separateAudio(id: number) {
+		return this.audioFilesService.createSeparation(id);
 	}
 
 	convertAudio() {

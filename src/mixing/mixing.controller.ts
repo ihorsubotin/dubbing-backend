@@ -23,7 +23,7 @@ export class MixingController {
 	spearate(@Param('id', ParseIntPipe) id: number) {
 		const audio = this.audioFilesService.findOne(id);
 		if (audio && audio.type === 'raw') {
-			return this.mixingService.separateAudio();
+			return this.mixingService.separateAudio(id);
 		} else {
 			throw new NotFoundException();
 		}

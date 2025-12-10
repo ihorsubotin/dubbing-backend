@@ -8,6 +8,7 @@ export class ActiveParamsProject implements CanActivate {
 	async canActivate(context: ExecutionContext): Promise<boolean> {
 		const reqest: Request = context.switchToHttp().getRequest();
 		const projectId = reqest.params?.['projectId'];
+		
 		if (projectId) {
 			const project = await this.projectsService.findOne(projectId);
 			if (project) {

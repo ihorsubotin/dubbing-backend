@@ -45,7 +45,7 @@ export class AudioFilesService extends GenericCrudService<AudioFile> {
 		audioFile.type = type;
 		audioFile.processed = false;
 		await this.createOne(audioFile);
-		this.modelsService.sendConvertRequest(audioFile);
+		this.modelsService.sendFormatConvertionRequest(audioFile);
 		return audioFile;
 	}
 
@@ -62,9 +62,55 @@ export class AudioFilesService extends GenericCrudService<AudioFile> {
 		audioFile.processed = true;
 		audioFile.type = 'wav';
 		await this.createOne(audioFile, undefined, true);
+		this.createSeparation(id);
 	}
 
-	async uploadActualFile(id: number, file: Express.Multer.File, processedInfo: ProcessedInfoDto){
+	async createSeparation(id: number){
+		const composition = this.findComposition(id);
+		let raw = composition.raw;
+		let voiceonly = composition.voiceonly;
+		let backgroundonly = composition.backgroundonly;
+		if(!voiceonly || !backgroundonly){
+			const newVoiceonly = new AudioFile();
+			newVoiceonly.duration = raw?.duration;
+			newVoiceonly.samplingRate = raw?.samplingRate;
+			newVoiceonly.versionOf = raw?.id;
+			newVoiceonly.processed = false;
+			newVoiceonly.uploadTime = new Date();
+			const newBackgroundonly = new AudioFile();
+			Object.assign(newBackgroundonly, newVoiceonly);
+			newVoiceonly.type = 'voiceonly';
+			newBackgroundonly.type = 'backgroundonly';
+			await this.createArray([newVoiceonly, newBackgroundonly], 'Creating new separation');
+			if(backgroundonly){
+				await this.removeOne(backgroundonly.id, undefined, true);
+			}
+			if(voiceonly){
+				await this.removeOne(voiceonly.id, undefined, true);
+			}
+			voiceonly = newVoiceonly;
+			backgroundonly = newBackgroundonly;
+		}else{
+			const timeDiff = Date.now() - (voiceonly.uploadTime?.valueOf() || 0);
+			if(voiceonly.processed === false && timeDiff < 5*60*1000){
+				return;
+			}
+			if(backgroundonly.processed === false && timeDiff < 5*60*1000){
+				return;
+			}
+			const update: Partial<AudioFile> = {
+				processed: false,
+				uploadTime: new Date()
+			}
+			await this.updateOne(voiceonly.id, update, 'Updating audio separation');
+			await this.updateOne(backgroundonly.id, update, undefined, true);
+		}
+		const updatedComposition = this.findComposition(id);
+		this.modelsService.sendSeparationRequest(updatedComposition);
+		return updatedComposition;
+	}
+
+	async uploadActualFile(id: number, file: Express.Multer.File, processedInfo?: ProcessedInfoDto){
 		const audioFile = await this.uploadFile(file);
 		const {name, ...update} = {
 			...audioFile,

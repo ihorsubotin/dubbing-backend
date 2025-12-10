@@ -113,7 +113,11 @@ export class GenericCrudService<T extends { id: number }> {
 		}
 	}
 
-	async removeOne(id: number, updateText: string | undefined = undefined) {
+	async removeOne(
+		id: number, 
+		updateText: string | undefined = undefined,
+		skipSaving: boolean = false
+	) {
 		const entry = this.findOne(id);
 		if (entry) {
 			await this.projectsService.updateCurrentProject(
@@ -121,6 +125,7 @@ export class GenericCrudService<T extends { id: number }> {
 				`${this.variableName}/array`,
 				entry,
 				updateText ? updateText : `Removed ${this.variableName} entry`,
+				skipSaving
 			);
 			return entry;
 		} else {

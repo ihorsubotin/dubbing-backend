@@ -17,18 +17,23 @@ import ProjectUpdate, {
 } from './entities/project-update';
 import { REQUEST } from '@nestjs/core';
 import ProjectVersion from './entities/project-version';
+import { Mutex } from 'async-mutex';
 
 @Injectable()
 export class ProjectsService {
 	private readonly logger = new Logger(ProjectsService.name);
 	public readonly rootPath = process.env.PROJECTS_DIR || './projects';
-
+	public mutex = new Mutex();
 	constructor(
 		@Inject(CACHE_MANAGER)
 		private cacheManager: Cache,
 		@Inject(REQUEST)
 		private readonly request: any,
-	) {}
+	) {
+		if(!fs.existsSync(this.rootPath)){
+			fs.mkdirSync(this.rootPath);
+		}
+	}
 
 	async create(createProjectDto: CreateProjectDto) {
 		const uuid = uuidv4();

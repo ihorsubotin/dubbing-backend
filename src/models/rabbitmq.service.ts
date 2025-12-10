@@ -8,6 +8,14 @@ export default class RabbitMQService{
 	constructor(
 		@Inject('RabbitMQ_media')
 		private mediaClient: ClientProxy,
+		@Inject('RabbitMQ_separation')
+		private separationClient: ClientProxy,
+		@Inject('RabbitMQ_diarization')
+		private diarizationClient: ClientProxy,
+		@Inject('RabbitMQ_recognition')
+		private recognitionClient: ClientProxy,
+		@Inject('RabbitMQ_conversion')
+		private conversionClient: ClientProxy,
 		private projectsService: ProjectsService
 	){
 	
@@ -21,6 +29,22 @@ export default class RabbitMQService{
 
 	emitMediaRequest(event: string, body: object){
 		this.mediaClient.emit(event, body);
+	}
+
+	emitSeparationRequest(event: string, body: object){
+		this.separationClient.emit(event, body);
+	}
+
+	emitDiarizationRequest(event: string, body: object){
+		this.diarizationClient.emit(event, body);
+	}
+
+	emitRecognitionRequest(event: string, body: object){
+		this.recognitionClient.emit(event, body);
+	}
+
+	emitConversionRequest(event: string, body: object){
+		this.conversionClient.emit(event, body);
 	}
 
 }

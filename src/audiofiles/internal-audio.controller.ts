@@ -35,13 +35,13 @@ export default class InternalAudioController {
 
 	@Post(':id')
 	@UseInterceptors(FileInterceptor('file'))
-	upload(@UploadedFile() file: Express.Multer.File, @Param('id', ParseIntPipe) id: number, @Body() body: ProcessedInfoDto) {
+	async upload(@UploadedFile() file: Express.Multer.File, @Param('id', ParseIntPipe) id: number, @Body() body: ProcessedInfoDto) {
 		const audio = this.audiofilesService.findOne(id);
 		if(audio){
 			if(audio.type === 'raw' || audio.type === 'dubbed'){
-				this.audiofilesService.uploadConvertedVersion(id, file, body);
-			}else if(audio.type === 'output'){
-				this.audiofilesService.uploadActualFile(id, file, body);
+				await this.audiofilesService.uploadConvertedVersion(id, file, body);
+			}else if(['output', 'backgroundonly', 'voiceonly'].includes(audio.type)){
+				await this.audiofilesService.uploadActualFile(id, file, body);
 			}
 		}else{
 			throw new NotFoundException('File id not found');

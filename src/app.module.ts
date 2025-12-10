@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module } from '@nestjs/common';
 import { ProjectsModule } from './projects/projects.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AudiofilesModule } from './audiofiles/audiofiles.module';
@@ -9,6 +9,7 @@ import { MixingModule } from './mixing/mixing.module';
 import { ConversionModule } from './conversion/conversion.module';
 import { ClientProvider, ClientsModule, RmqOptions, Transport } from '@nestjs/microservices';
 import { RmqUrl } from '@nestjs/microservices/external/rmq-url.interface';
+import { MutexMiddleware } from './projects/middleware/single-project';
 
 function clientForQueue(name: string){
 	return {
@@ -34,12 +35,13 @@ function clientForQueue(name: string){
 		ModelsModule,
 		DiarisationModule,
 		SubtitlesModule,
-		ConversionModule,
-		ClientsModule.registerAsync([
-			clientForQueue('media')
-		]),
+		ConversionModule
 	],
 	controllers: [],
 	providers: [],
 })
-export class AppModule {}
+export class AppModule {
+	configure(consumer: MiddlewareConsumer) {
+		consumer.apply(MutexMiddleware).forRoutes('*');
+	}
+}

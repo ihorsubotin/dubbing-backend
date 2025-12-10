@@ -5,6 +5,7 @@ import { DEFAULT_PROJECT } from 'src/projects/entities/project';
 import RabbitMQService from './rabbitmq.service';
 import AudioFile from 'src/audiofiles/entities/audiofile.entity';
 import { AudioMap } from 'src/mixing/entities/audio-map.entity';
+import CompositionAudio from 'src/audiofiles/entities/composition-audio.entity';
 
 @Injectable()
 export class ModelsService {
@@ -52,11 +53,42 @@ export class ModelsService {
 		return this.projectsService.getProject().models[modelName];
 	}
 	
-	async sendConvertRequest(audio: AudioFile){
+	async sendSeparationRequest(composition: CompositionAudio){
+		this.rabitMQService.emitSeparationRequest('separate', {
+			project: this.projectsService.getProject().id,
+			fileName: composition.wav?.fileName,
+			toVoiceonly: composition.voiceonly?.id,
+			toBackgroundonly: composition.backgroundonly?.id
+		});
+	}
+
+	async sendDiarisationRequest(audioFiles: AudioFile[]){
+		this.rabitMQService.emitDiarizationRequest('diarization', {
+			project: this.projectsService.getProject().id,
+			files: audioFiles
+		});
+	}
+	
+	async sendSubtitlesRequest(audioFiles: AudioFile[]){
+		this.rabitMQService.emitRecognitionRequest('subtitles', {
+			project: this.projectsService.getProject().id,
+			files: audioFiles
+		});
+	}
+
+	async sendFormatConvertionRequest(audio: AudioFile){
 		this.rabitMQService.emitMediaRequest('convert', {
 			project: this.projectsService.getProject().id,
 			fileName: audio.fileName,
 			id: audio.id
+		});
+	}
+
+	async sendVoiceConvertionRequest(fromFileName: string, toId: number){
+		this.rabitMQService.emitConversionRequest('convert', {
+			project: this.projectsService.getProject().id,
+			fileName: fromFileName,
+			id: toId
 		});
 	}
 

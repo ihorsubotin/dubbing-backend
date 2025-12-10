@@ -14,7 +14,10 @@ function clientForQueue(name: string){
 			transport: Transport.RMQ,
 			options: {
 				urls: [configService.get('RABBITMQ_URL')],
-				queue: name
+				queue: name,
+				queueOptions:{
+					durable: true
+				}
 			},
 		}),
 		inject: [ConfigService],
@@ -23,7 +26,11 @@ function clientForQueue(name: string){
 
 @Module({
 	imports: [ProjectsModule, ClientsModule.registerAsync([
-		clientForQueue('media')
+		clientForQueue('media'),
+		clientForQueue('separation'),
+		clientForQueue('diarization'),
+		clientForQueue('recognition'),
+		clientForQueue('conversion')
 	]),],
 	controllers: [ModelsController],
 	providers: [ModelsService, RabbitMQService],
