@@ -54,20 +54,16 @@ export class DiarisationService extends GenericCrudService<DiarisationEntry> {
 	}
 
 	fileDiarisation(audios: AudioFile[]) {
-		const model = this.modelsService.findOne('diarisation');
-		const reqests: Partial<DiarisationEntry>[] = [];
-		for (const audio of audios) {
+		const result: Partial<AudioFile>[] = [];
+		for(const audio of audios){
 			const composition = this.audioFilesService.findComposition(audio.id);
-			if (composition.raw) {
-				reqests.push({
-					forAudio: audio.id,
-					startTime: 5,
-					endTime: 10,
-					speaker: '1',
-				});
-			}
+			const fileName = composition.voiceonly?composition.voiceonly.fileName:composition.wav?.fileName
+			result.push({
+				fileName: fileName,
+				id: audio.id
+			});
 		}
-		this.handleResults(reqests);
+		this.modelsService.sendDiarisationRequest(result);
 	}
 
 	async handleResults(diarisationResults: Partial<DiarisationEntry>[]) {

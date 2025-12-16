@@ -6,6 +6,7 @@ import RabbitMQService from './rabbitmq.service';
 import AudioFile from 'src/audiofiles/entities/audiofile.entity';
 import { AudioMap } from 'src/mixing/entities/audio-map.entity';
 import CompositionAudio from 'src/audiofiles/entities/composition-audio.entity';
+import { DiarisationEntry } from 'src/diarisation/entities/diarisation.entity';
 
 @Injectable()
 export class ModelsService {
@@ -62,14 +63,14 @@ export class ModelsService {
 		});
 	}
 
-	async sendDiarisationRequest(audioFiles: AudioFile[]){
-		this.rabitMQService.emitDiarizationRequest('diarization', {
+	async sendDiarisationRequest(audioFiles: Partial<AudioFile>[]){
+		this.rabitMQService.emitDiarisationRequest('diarisation', {
 			project: this.projectsService.getProject().id,
 			files: audioFiles
 		});
 	}
 	
-	async sendSubtitlesRequest(audioFiles: AudioFile[]){
+	async sendSubtitlesRequest(audioFiles: Partial<AudioFile>[]){
 		this.rabitMQService.emitRecognitionRequest('subtitles', {
 			project: this.projectsService.getProject().id,
 			files: audioFiles
@@ -84,11 +85,11 @@ export class ModelsService {
 		});
 	}
 
-	async sendVoiceConvertionRequest(fromFileName: string, toId: number){
+	async sendVoiceConvertionRequest(audioFiles:AudioFile[], diarisations: DiarisationEntry[]){
 		this.rabitMQService.emitConversionRequest('convert', {
 			project: this.projectsService.getProject().id,
-			fileName: fromFileName,
-			id: toId
+			aduio: audioFiles,
+			diarisations: diarisations
 		});
 	}
 

@@ -9,15 +9,23 @@ import GenerateSubtitlesDto from './dto/generate-subtitles.dto';
 import AudioFile from 'src/audiofiles/entities/audiofile.entity';
 import { ModelsService } from 'src/models/models.service';
 import TranslateSubtitlesDto from './dto/translate-subtitles.dto';
+import {DeepLClient, TargetLanguageCode} from 'deepl-node';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class SubtitlesService extends GenericCrudService<SubtitleEntry> {
+	private deeplClient: DeepLClient;
 	constructor(
 		protected projectsService: ProjectsService,
 		private audioFilesService: AudioFilesService,
 		private modelsService: ModelsService,
+		private configService: ConfigService
 	) {
 		super('subtitles', projectsService);
+		const authKey = this.configService.get<string>('DEEPL_KEY');
+		if(authKey){
+			this.deeplClient = new DeepLClient(authKey);
+		}
 	}
 
 	async create(createSubtitleDto: CreateSubtitleDto) {
@@ -63,21 +71,16 @@ export class SubtitlesService extends GenericCrudService<SubtitleEntry> {
 
 	//We apply model to the list of audio files
 	fileSubtitles(audios: AudioFile[]) {
-		const model = this.modelsService.findOne('recognition');
-		const reqests: CreateSubtitleDto[] = [];
-		for (const audio of audios) {
+		const result: Partial<AudioFile>[] = [];
+		for(const audio of audios){
 			const composition = this.audioFilesService.findComposition(audio.id);
-			if (composition.raw) {
-				reqests.push({
-					forAudio: audio.id,
-					startTime: 4,
-					endTime: 7,
-					language: 'en',
-					text: 'Some text person spreaks',
-				});
-			}
+			const fileName = composition.voiceonly?composition.voiceonly.fileName:composition.wav?.fileName
+			result.push({
+				fileName: fileName,
+				id: audio.id
+			});
 		}
-		this.handleSubtitles(reqests);
+		this.modelsService.sendSubtitlesRequest(result);
 	}
 
 	async handleSubtitles(subtitlesResults: CreateSubtitleDto[]) {
@@ -136,24 +139,25 @@ export class SubtitlesService extends GenericCrudService<SubtitleEntry> {
 			}
 		}
 		await this.removeArray(oldSubtitles, 'Removed old subtitles');
-		this.translateEntries(translateFrom, translateSubtitlesDto.language);
-		return translateFrom.length;
+		return await this.translateEntries(translateFrom, translateSubtitlesDto.language);
 	}
 
-	translateEntries(subtitles: SubtitleEntry[], language: string) {
+	async translateEntries(subtitles: SubtitleEntry[], language: TargetLanguageCode) {
 		const model = this.modelsService.findOne('translation');
 		const reqests: CreateSubtitleDto[] = [];
 		for (const subtitle of subtitles) {
+			const translation = await this.deeplClient.translateText(subtitle.text, null, language);
 			reqests.push({
 				translationOf: subtitle.id,
 				forAudio: subtitle.forAudio,
 				startTime: subtitle.startTime,
 				endTime: subtitle.endTime,
 				language: language,
-				text: 'Переклад тексту',
+				text: translation.text,
 			});
 		}
 		this.handleSubtitles(reqests);
+		return reqests;
 	}
 
 	getOriginalByTranslation(subtitles: SubtitleEntry[]) {

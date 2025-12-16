@@ -28,7 +28,7 @@ function clientForQueue(name: string){
 	imports: [ProjectsModule, ClientsModule.registerAsync([
 		clientForQueue('media'),
 		clientForQueue('separation'),
-		clientForQueue('diarization'),
+		clientForQueue('diarisation'),
 		clientForQueue('recognition'),
 		clientForQueue('conversion')
 	]),],
