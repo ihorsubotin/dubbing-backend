@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { CreateSubtitleDto } from './dto/create-subtitle.dto';
 import { UpdateSubtitleDto } from './dto/update-subtitle.dto';
 import { GenericCrudService } from 'src/projects/generic-crud.service';
@@ -15,6 +15,7 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class SubtitlesService extends GenericCrudService<SubtitleEntry> {
 	private deeplClient: DeepLClient;
+	private readonly logger = new Logger(ProjectsService.name);
 	constructor(
 		protected projectsService: ProjectsService,
 		private audioFilesService: AudioFilesService,
@@ -25,6 +26,8 @@ export class SubtitlesService extends GenericCrudService<SubtitleEntry> {
 		const authKey = this.configService.get<string>('DEEPL_KEY');
 		if(authKey){
 			this.deeplClient = new DeepLClient(authKey);
+		}else{
+			this.logger.error('Unable to find DEEPL key')
 		}
 	}
 

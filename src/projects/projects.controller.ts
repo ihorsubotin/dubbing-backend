@@ -55,14 +55,13 @@ export class ProjectsController {
 	async testProjectOpeningSpeed() {
 		const projects = await this.projectsService.findAll();
 		const startTime = new Date();
-		for (let i = 0; i < 2000; i++) {
-			for (const project of projects) {
-				await this.projectsService.findOne(project.id as string);
-			}
+		for (let i = 0; i < 10000; i++) {
+			let project = projects[Math.floor(Math.random()*projects.length)];
+			await this.projectsService.findOne(project.id as string);
 		}
 		const endTime = new Date();
 		const differnece = endTime.getTime() - startTime.getTime();
-		return differnece;
+		return `Request took ${differnece} miliseconds to process`;
 	}
 
 	@UseGuards(ActiveCurrentProject)

@@ -39,6 +39,8 @@ export class ModelsService {
 				break;
 			case 'voiceConversion':
 				break;
+			case 'render':
+				break;
 			default:
 				return false;
 		}
@@ -85,7 +87,7 @@ export class ModelsService {
 		});
 	}
 
-	async sendVoiceConvertionRequest(audioFiles:AudioFile[], diarisations: DiarisationEntry[]){
+	async sendVoiceConvertionRequest(audioFiles:Partial<AudioFile>[], diarisations: DiarisationEntry[]){
 		this.rabitMQService.emitConversionRequest('convert', {
 			project: this.projectsService.getProject().id,
 			aduio: audioFiles,

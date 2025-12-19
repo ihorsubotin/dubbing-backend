@@ -1,4 +1,4 @@
-import { Body, Controller, NotFoundException, Param, ParseIntPipe, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Logger, NotFoundException, Param, ParseIntPipe, Post, UseGuards } from "@nestjs/common";
 import { ActiveParamsProject } from "src/projects/guard/params-project";
 import { SubtitlesService } from "./subtitles.service";
 import { CreateSubtitleDto } from "./dto/create-subtitle.dto";

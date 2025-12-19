@@ -1,4 +1,5 @@
 import {
+	Body,
 	Controller,
 	Get,
 	NotFoundException,
@@ -10,6 +11,7 @@ import {
 import { ActiveCurrentProject } from 'src/projects/guard/current-project';
 import { MixingService } from './mixing.service';
 import { AudioFilesService } from 'src/audiofiles/audiofiles.service';
+import UseConversionDto from './dto/use-conversion.dto';
 
 @Controller('audio')
 @UseGuards(ActiveCurrentProject)
@@ -28,14 +30,9 @@ export class MixingController {
 			throw new NotFoundException();
 		}
 	}
-	@Post(':id/conversion')
-	conversion(@Param('id', ParseIntPipe) id: number) {
-		const audio = this.audioFilesService.findOne(id);
-		if (audio && audio.type === 'dubbed') {
-			return this.mixingService.convertAudio();
-		} else {
-			throw new NotFoundException();
-		}
+	@Post('conversion')
+	conversion(@Body() useConversionDto: UseConversionDto) {
+		return this.mixingService.convertAudio(useConversionDto)
 	}
 
 	@Get('output')

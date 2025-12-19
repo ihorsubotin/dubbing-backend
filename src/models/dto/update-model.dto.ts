@@ -5,4 +5,6 @@ export class UpdateModelDto {
 	@IsString()
 	@Length(3, 25)
 	model: string;
+	@IsOptional()
+	format: string;
 }

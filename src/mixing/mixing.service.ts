@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { GenericCrudService } from 'src/projects/generic-crud.service';
 import { AudioMap } from './entities/audio-map.entity';
 import { ProjectsService } from 'src/projects/projects.service';
@@ -7,6 +7,7 @@ import { CreateAudioMapDto } from './dto/create-map.dto';
 import { AudioFilesService } from 'src/audiofiles/audiofiles.service';
 import { ModelsService } from 'src/models/models.service';
 import AudioFile from 'src/audiofiles/entities/audiofile.entity';
+import UseConversionDto from './dto/use-conversion.dto';
 
 @Injectable()
 export class MixingService extends GenericCrudService<AudioMap> {
@@ -22,9 +23,51 @@ export class MixingService extends GenericCrudService<AudioMap> {
 		return this.audioFilesService.createSeparation(id);
 	}
 
-	convertAudio() {
-		
-		return { filename: 'helloconverted' };
+	async convertAudio(useConversionDto: UseConversionDto) {
+		const reference = this.audioFilesService.findOne(useConversionDto.referenceAudio);
+		if (reference && reference.type === 'raw') {
+			let diarisations = this.projectsService.getProject().diarisations.array;
+			diarisations = diarisations.filter(
+				entry => entry.speaker === useConversionDto.speaker && entry.forAudio === reference.id
+			);
+			if(diarisations.length === 0){
+				throw new BadRequestException('Diarisations not found');
+			}
+			const audioFiles: AudioFile[] = [];
+			if(useConversionDto.coversionAudios){
+				for(const audioId of useConversionDto.coversionAudios){
+					const audio = this.audioFilesService.findOne(audioId);
+					if(audio && audio.type == 'dubbed'){
+						audioFiles.push(audio);
+					}
+				}
+			}else{
+				const mappings = this.findForAudio(reference.id);
+				for(const mapping of mappings){
+					for(const diarisation of diarisations){
+						const mappingEnd = mapping.toStartTime + (mapping.fromEndTime - mapping.fromStartTime)
+						if(diarisation.startTime < mappingEnd && 
+							diarisation.endTime > mapping.toStartTime){
+							const audio = this.audioFilesService.findOne(mapping.toAudio);
+							if (audio)
+								audioFiles.push(audio);
+						}
+					}
+				}
+			}
+			const uploadTo = await this.audioFilesService.createVC(audioFiles);
+			const audioLoad: Partial<AudioFile>[] = [];
+			for(let i = 0; i< uploadTo.length; i++){
+				audioLoad.push({
+					id: uploadTo[i].id,
+					fileName: audioFiles[i].fileName
+				});
+			}
+			this.modelsService.sendVoiceConvertionRequest(audioLoad, diarisations);
+			return uploadTo;
+		} else {
+			throw new NotFoundException(`Reference audio not found`);
+		}
 	}
 
 	async produceOutput(id: number) {

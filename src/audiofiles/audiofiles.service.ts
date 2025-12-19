@@ -111,17 +111,46 @@ export class AudioFilesService extends GenericCrudService<AudioFile> {
 	}
 
 	async uploadActualFile(id: number, file: Express.Multer.File, processedInfo?: ProcessedInfoDto){
+		
 		const audioFile = await this.uploadFile(file);
 		const {name, ...update} = {
 			...audioFile,
 			...processedInfo
-		}
+		};
 		Object.keys(update).forEach(key => {
-			if (update[key] === undefined) {
+			if (update[key] === undefined || update[key] === null) {
 				delete update[key];
 			}
 		});
 		await this.updateOne(id, update, undefined, true);
+	}
+
+	async createVC(audios: AudioFile[]){
+		const uploadTo: AudioFile[] = [];
+		let skipSaving = false;
+		for(const audio of audios){
+			const composition = this.findComposition(audio.id);
+			if(composition.converted){
+				await this.updateOne(composition.converted.id, {
+					processed: false,
+					uploadTime: new Date()
+				}, 'Applying voice conversion', skipSaving);
+				skipSaving = true;
+				uploadTo.push(composition.converted);
+			}else{
+				const newAudio = new AudioFile();
+				newAudio.duration = audio.duration;
+				newAudio.samplingRate = audio.samplingRate;
+				newAudio.versionOf = audio.id;
+				newAudio.processed = false;
+				newAudio.uploadTime = new Date();
+				newAudio.type = 'converted';
+				await this.createOne(newAudio, 'Applying voice conversion', skipSaving);
+				skipSaving = true;
+				uploadTo.push(newAudio);
+			}
+		}
+		return uploadTo;
 	}
 
 	getAudioStream(fileName: string) {
@@ -139,7 +168,7 @@ export class AudioFilesService extends GenericCrudService<AudioFile> {
 			name = '';
 		}
 		return audio.filter(
-			(audio) => audio.type === type && audio.name.includes(name),
+			(audio) => audio.type === type && audio.name?.includes(name),
 		);
 	}
 
@@ -168,7 +197,7 @@ export class AudioFilesService extends GenericCrudService<AudioFile> {
 		composition.backgroundonly = audio.find(
 			(value) => value.versionOf == id && value.type == 'backgroundonly',
 		);
-		composition.output = audio.find(
+		composition.output = audio.findLast(
 			(value) => value.versionOf == id && value.type == 'output',
 		);
 		return composition;

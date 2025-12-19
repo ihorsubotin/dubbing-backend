@@ -1,4 +1,4 @@
-import { Body, Controller, Get, NotFoundException, Param, ParseIntPipe, Post, Query, Req, Res, StreamableFile, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
+import { Body, Controller, Get, Logger, NotFoundException, Param, ParseIntPipe, Post, Query, Req, Res, StreamableFile, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
 import { AudioFilesService } from "./audiofiles.service";
 import { ActiveParamsProject } from "src/projects/guard/params-project";
 import type { Response } from "express";
@@ -40,7 +40,7 @@ export default class InternalAudioController {
 		if(audio){
 			if(audio.type === 'raw' || audio.type === 'dubbed'){
 				await this.audiofilesService.uploadConvertedVersion(id, file, body);
-			}else if(['output', 'backgroundonly', 'voiceonly'].includes(audio.type)){
+			}else if(['output', 'backgroundonly', 'voiceonly', 'converted'].includes(audio.type)){
 				await this.audiofilesService.uploadActualFile(id, file, body);
 			}
 		}else{
