@@ -45,7 +45,7 @@ export const DEFAULT_PROJECT: Partial<Project> = {
 			model: 'chatterbox',
 		},
 		render: {
-			format: 'wav'
+			format: 'original'
 		}
 	},
 };

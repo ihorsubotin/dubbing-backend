@@ -9,6 +9,7 @@ import { GenericCrudService } from 'src/projects/generic-crud.service';
 import { ModelsService } from 'src/models/models.service';
 import ProcessedInfoDto from './dto/processed-info.dto';
 
+
 @Injectable()
 export class AudioFilesService extends GenericCrudService<AudioFile> {
 	constructor(
@@ -62,7 +63,7 @@ export class AudioFilesService extends GenericCrudService<AudioFile> {
 		audioFile.processed = true;
 		audioFile.type = 'wav';
 		await this.createOne(audioFile, undefined, true);
-		this.createSeparation(id);
+		await this.createSeparation(id);
 	}
 
 	async createSeparation(id: number){

@@ -82,7 +82,7 @@ export class MixingService extends GenericCrudService<AudioMap> {
 		return audio;
 	}
 
-	create(createAudioMapDto: CreateAudioMapDto) {
+	async create(createAudioMapDto: CreateAudioMapDto) {
 		const fromAudio = this.audioFilesService.findOne(
 			createAudioMapDto.fromAudio,
 		);
@@ -94,7 +94,7 @@ export class MixingService extends GenericCrudService<AudioMap> {
 			toAudio.type === 'raw'
 		) {
 			if (createAudioMapDto.fromStartTime < createAudioMapDto.fromEndTime) {
-				const audioMap = this.createOne(createAudioMapDto);
+				const audioMap = await this.createOne(createAudioMapDto);
 				return audioMap;
 			} else {
 				return undefined;
